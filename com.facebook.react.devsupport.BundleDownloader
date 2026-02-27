@@ -1,0 +1,80 @@
+Build a React Native (Expo + Android) feature that automatically reads SMS messages and converts them into financial transactions for a personal finance app.
+
+Requirements:
+
+1. Permissions:
+
+* Request Android permission to read SMS (READ_SMS).
+* Handle permission acceptance and denial properly.
+
+2. SMS Reading:
+
+* Use a suitable library (like react-native-get-sms-android).
+* Fetch inbox messages.
+* Process recent SMS messages only (last 100 or configurable).
+
+3. Transaction Detection:
+
+* Identify financial messages using keywords:
+
+  * "debited", "credited", "spent", "withdrawn", "UPI", "paid", "received"
+* Ignore OTP, promotional, and spam messages.
+
+4. Data Extraction:
+   From each valid SMS extract:
+
+* Amount (e.g., Rs.500, INR 1,200)
+* Transaction type (debit / credit)
+* Merchant or receiver name (e.g., Swiggy, Amazon, etc.)
+* Date (from SMS metadata)
+
+5. Parsing Logic:
+
+* Use regex to extract amount
+* Detect category using keyword mapping:
+
+  * Swiggy, Zomato → Food
+  * Petrol, Fuel → Transport
+  * Amazon, Flipkart → Shopping
+
+6. Data Structure:
+   Return transactions in this format:
+   {
+   amount: number,
+   type: "expense" | "income",
+   category: string,
+   merchant: string,
+   date: string
+   }
+
+7. Storage:
+
+* Save parsed transactions locally (AsyncStorage or SQLite)
+* Prevent duplicates using message ID or timestamp
+
+8. UI:
+
+* Show detected transactions in a list
+* Add "Confirm" button before saving
+* Allow user to edit category before saving
+
+9. Optimization:
+
+* Run parsing only once per session or on refresh
+* Cache processed SMS IDs
+
+10. Security & Privacy:
+
+* Clearly explain why SMS permission is needed
+* Do not upload SMS data to server without user consent
+
+11. Bonus:
+
+* Add background sync using a trigger or manual refresh button
+* Add confidence score for detected transactions
+
+Output:
+
+* Clean, modular React Native code
+* Separate utility functions for parsing
+* Reusable hooks (useSMSReader, useTransactionParser)
