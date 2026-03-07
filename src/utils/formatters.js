@@ -24,6 +24,15 @@ export const formatCurrencyShort = (amount) => {
 };
 
 /**
+ * Format as a full number with commas, no symbol, no decimals
+ */
+export const formatFullNumber = (amount) => {
+  return new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
+};
+
+/**
  * Format transaction date with smart labels
  */
 export const formatDate = (dateString) => {
