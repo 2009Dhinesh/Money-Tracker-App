@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { formatCurrencyShort } from '../utils/formatters';
+import { formatCurrency, formatCurrencyShort, formatFullNumber } from '../utils/formatters';
 import { COLORS, RADIUS, SPACING, FONT_SIZES, SHADOWS } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -28,7 +28,13 @@ const BalanceCard = ({ balance, income, expense, month }) => {
 
       {/* Balance */}
       <Text style={styles.balanceLabel}>Total Balance</Text>
-      <Text style={styles.balance}>{formatCurrencyShort(balance)}</Text>
+      <Text
+        style={styles.balance}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        {formatFullNumber(balance)}
+      </Text>
 
       {/* Savings Rate */}
       {savingsRate > 0 && (
@@ -50,7 +56,7 @@ const BalanceCard = ({ balance, income, expense, month }) => {
           <View>
             <Text style={styles.statLabel}>Income</Text>
             <Text style={[styles.statValue, { color: COLORS.income }]}>
-              {formatCurrencyShort(income)}
+              {formatFullNumber(income)}
             </Text>
           </View>
         </View>
@@ -64,7 +70,7 @@ const BalanceCard = ({ balance, income, expense, month }) => {
           <View>
             <Text style={styles.statLabel}>Expenses</Text>
             <Text style={[styles.statValue, { color: COLORS.expense }]}>
-              {formatCurrencyShort(expense)}
+              {formatFullNumber(expense)}
             </Text>
           </View>
         </View>
