@@ -11,7 +11,7 @@ export const useCategories = () => {
     setError(null);
     try {
       const res = await categoryApi.getAll(params);
-      setCategories(res.categories);
+      setCategories(res.categories || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -33,8 +33,8 @@ export const useCategories = () => {
     await categoryApi.delete(id);
   }, []);
 
-  const expenseCategories = categories.filter((c) => c.type === 'expense');
-  const incomeCategories = categories.filter((c) => c.type === 'income');
+  const expenseCategories = (categories || []).filter((c) => c.type === 'expense');
+  const incomeCategories = (categories || []).filter((c) => c.type === 'income');
 
   return {
     categories,

@@ -7,7 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useGold } from '../hooks/useGold';
+import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
+import Button from '../components/Button';
+import EmptyState from '../components/EmptyState';
 
 const GOLD_TYPES = [
   { label: 'Jewellery', value: 'jewellery', icon: '💍' },
@@ -22,6 +25,7 @@ const PURITIES = ['24K', '22K', '18K', '14K'];
 export default function GoldScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { assets, summary, livePrice, loading, fetchAssets, addAsset, removeAsset, calculate } = useGold();
+  const { openDrawer } = useAppDrawer();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -92,16 +96,16 @@ export default function GoldScreen({ navigation }) {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
+          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>🪙 Gold Assets</Text>
-        <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
-          <TouchableOpacity onPress={() => setShowCalcModal(true)} style={[styles.iconBtn, { backgroundColor: colors.surfaceAlt }]}>
-            <Ionicons name="calculator-outline" size={18} color="#FFB020" />
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Gold Assets</Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setShowCalcModal(true)} style={styles.headerActionBtn}>
+            <Ionicons name="calculator-outline" size={24} color="#FFB020" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowAddModal(true)} style={[styles.iconBtn, { backgroundColor: '#FFB020' }]}>
-            <Ionicons name="add" size={20} color="#fff" />
+          <TouchableOpacity onPress={() => setShowAddModal(true)} style={styles.headerActionBtn}>
+            <Ionicons name="add" size={28} color="#FFB020" />
           </TouchableOpacity>
         </View>
       </View>
@@ -179,11 +183,13 @@ export default function GoldScreen({ navigation }) {
         </Text>
 
         {assets.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={{ fontSize: 48 }}>🪙</Text>
-            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No gold holdings yet</Text>
-            <Text style={{ color: colors.textTertiary, fontSize: FONT_SIZES.sm }}>Tap + to add your first gold asset</Text>
-          </View>
+          <EmptyState
+            icon="diamond-outline"
+            title="No gold holdings yet"
+            subtitle="Tap + to add your first gold asset"
+          >
+            <Button title="+ Set First Gold" onPress={() => setShowAddModal(true)} />
+          </EmptyState>
         ) : (
           assets.map(asset => {
             const pl = asset.profitLoss || 0;
@@ -365,10 +371,34 @@ export default function GoldScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base, borderBottomWidth: 1 },
+  header: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base, 
+    borderBottomWidth: 1,
+    position: 'relative',
+  },
   headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.base,
+    flexDirection: 'row', 
+    gap: SPACING.sm,
+    alignItems: 'center',
+  },
+  headerActionBtn: {
+    padding: 2,
+  },
   scroll: { padding: SPACING.xl },
 
   priceBanner: { flexDirection: 'row', alignItems: 'center', padding: SPACING.base, borderRadius: RADIUS.lg, marginBottom: SPACING.xl },

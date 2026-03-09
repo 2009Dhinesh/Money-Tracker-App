@@ -9,6 +9,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useLand } from '../hooks/useLand';
 import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
+import Button from '../components/Button';
+import EmptyState from '../components/EmptyState';
 
 const PROPERTY_TYPES = [
   { label: 'Plot', value: 'plot', icon: '🏗️' },
@@ -101,12 +103,12 @@ export default function LandScreen({ navigation }) {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.backBtn}>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
           <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>🏡 Properties</Text>
-        <TouchableOpacity onPress={() => setShowAddModal(true)} style={[styles.iconBtn, { backgroundColor: '#00C896' }]}>
-          <Ionicons name="add" size={20} color="#fff" />
+        <TouchableOpacity onPress={() => setShowAddModal(true)} style={styles.headerRight}>
+          <Ionicons name="add" size={28} color="#00C896" />
         </TouchableOpacity>
       </View>
 
@@ -156,11 +158,16 @@ export default function LandScreen({ navigation }) {
         </Text>
 
         {assets.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={{ fontSize: 48 }}>🏡</Text>
-            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No properties yet</Text>
-            <Text style={{ color: colors.textTertiary, fontSize: FONT_SIZES.sm }}>Tap + to add your first property</Text>
-          </View>
+          <EmptyState
+            icon="home-outline"
+            title="No properties yet"
+            subtitle="Tap + to add your first property"
+          >
+            <Button 
+              title="+ Set First Property" 
+              onPress={() => setShowAddModal(true)}
+            />
+          </EmptyState>
         ) : (
           assets.map(asset => {
             const appreciation = asset.appreciation || 0;
@@ -334,10 +341,29 @@ export default function LandScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base, borderBottomWidth: 1 },
+  header: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base, 
+    borderBottomWidth: 1,
+    position: 'relative',
+  },
   headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
   scroll: { padding: SPACING.xl },
 
   summaryRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.sm },

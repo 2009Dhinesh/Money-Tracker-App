@@ -84,22 +84,25 @@ export default function InvestmentsScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
       
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md }}>
-          <TouchableOpacity onPress={openDrawer} style={{ marginRight: SPACING.md }}>
-            <Ionicons name="menu-outline" size={28} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
+      <View style={[styles.header, { backgroundColor: COLORS.primary }]}>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
+          <Ionicons name="menu-outline" size={28} color="#fff" />
+        </TouchableOpacity>
+        
+        <View style={{ alignItems: 'center' }}>
           <Text style={styles.headerTitle}>Investments</Text>
-        </View>
-        <View style={styles.headerContent}>
           <Text style={styles.headerTotal}>₹{totalValue.toLocaleString()}</Text>
           <View style={styles.profitBadge}>
             <Ionicons name={totalProfit >= 0 ? 'caret-up' : 'caret-down'} size={14} color="#fff" />
             <Text style={styles.profitText}>
-              ₹{Math.abs(totalProfit).toLocaleString()} ({((totalProfit / (totalValue - totalProfit)) * 100).toFixed(2)}%)
+              ₹{Math.abs(totalProfit).toLocaleString()} ({((totalProfit / (totalValue - totalProfit || 1)) * 100).toFixed(2)}%)
             </Text>
           </View>
         </View>
+
+        <TouchableOpacity style={styles.headerRight} onPress={() => setModalVisible(true)}>
+          <Ionicons name="add" size={32} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -155,13 +158,12 @@ export default function InvestmentsScreen() {
             icon="trending-up-outline" 
             title="No Investments Yet" 
             subtitle="Keep track of your stocks, crypto and more" 
-          />
+          >
+            <Button title="+ Set First Investment" onPress={() => setModalVisible(true)} />
+          </EmptyState>
         )}
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -214,20 +216,41 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
     backgroundColor: COLORS.primary,
-    paddingTop: 60, paddingBottom: 30,
+    paddingTop: 56, 
+    paddingBottom: 30,
     paddingHorizontal: SPACING.xl,
-    borderBottomLeftRadius: 30, borderBottomRightRadius: 30,
+    borderBottomLeftRadius: 32, 
+    borderBottomRightRadius: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
-  headerTitle: { color: 'rgba(255,255,255,0.7)', fontSize: FONT_SIZES.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
-  headerTotal: { color: '#fff', fontSize: 32, fontWeight: '800', marginVertical: 4 },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    top: 56,
+    padding: 2,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    top: 56,
+    padding: 2,
+  },
+  headerTitle: { color: 'rgba(255,255,255,0.8)', fontSize: FONT_SIZES.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 },
+  headerTotal: { color: '#fff', fontSize: 32, fontWeight: '900', letterSpacing: -1 },
   profitBadge: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row', 
+    alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: RADIUS.sm, alignSelf: 'flex-start',
+    paddingHorizontal: 10, 
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
+    marginTop: 8,
   },
-  profitText: { color: '#fff', fontSize: 12, fontWeight: '700', marginLeft: 4 },
-  scroll: { padding: SPACING.xl },
+  profitText: { color: '#fff', fontSize: 12, fontWeight: '800', marginLeft: 4 },
+  scroll: { padding: SPACING.xl, paddingTop: SPACING.xl },
   invCard: { borderRadius: RADIUS.xl, borderWidth: 1, padding: SPACING.lg, marginBottom: SPACING.base },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.md },
   typeIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

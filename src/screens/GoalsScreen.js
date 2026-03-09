@@ -9,8 +9,9 @@ import { useTheme } from '../context/ThemeContext';
 import { useGoals } from '../hooks/useGoals';
 import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
-import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
+import Button from '../components/Button';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { formatCurrencyShort } from '../utils/formatters';
 import { useAccounts } from '../hooks/useAccounts';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
@@ -141,15 +142,15 @@ export default function GoalsScreen() {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
-        <View style={[styles.header, { flexDirection: 'row', alignItems: 'flex-start' }]}>
-          <TouchableOpacity onPress={openDrawer} style={{ marginRight: SPACING.md, marginTop: 4 }}>
-            <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Savings Goals</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Track your dreams & achievements</Text>
-          </View>
-        </View>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
+          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Savings Goals</Text>
+        <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.headerRight}>
+          <Ionicons name="add" size={32} color={COLORS.primary} />
+        </TouchableOpacity>
+      </View>
 
         {goals.length > 0 ? (
           goals.map((goal) => (
@@ -226,14 +227,13 @@ export default function GoalsScreen() {
             icon="trophy-outline"
             title="No Goals Yet"
             subtitle="Start saving for your dreams by adding a new goal!"
-          />
+          >
+            <Button title="+ Set First Goal" onPress={() => setModalVisible(true)} />
+          </EmptyState>
         )}
       </ScrollView>
 
       {/* FAB to add goal */}
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-        <Ionicons name="add" size={30} color="#fff" />
-      </TouchableOpacity>
 
       {/* Add Goal Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -389,10 +389,32 @@ export default function GoalsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: SPACING.lg, paddingBottom: 100 },
-  header: { marginBottom: SPACING.xl, marginTop: 40 },
-  title: { fontSize: FONT_SIZES['3xl'], fontWeight: '800' },
-  subtitle: { fontSize: FONT_SIZES.sm, marginTop: 4 },
+  // scroll: { padding: SPACING.lg, paddingBottom: 100 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
+    paddingTop: 56,
+    paddingBottom: SPACING.base,
+    borderBottomWidth: 1,
+    position: 'relative',
+    marginBottom: SPACING.base,
+  },
+  headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
+  subtitle: { fontSize: FONT_SIZES.xs, fontWeight: '500', marginTop: -2 },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
   goalCard: {
     padding: SPACING.lg,
     borderRadius: RADIUS.xl,

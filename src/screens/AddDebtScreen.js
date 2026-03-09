@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useDebts } from '../hooks/useDebts';
 import { useContacts } from '../hooks/useContacts';
 import { useAccounts } from '../hooks/useAccounts';
+import Button from '../components/Button';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
 import NumericKeyboard from '../components/NumericKeyboard';
@@ -80,11 +81,10 @@ export default function AddDebtScreen({ navigation }) {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>New Record</Text>
-        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -109,7 +109,7 @@ export default function AddDebtScreen({ navigation }) {
           <Text style={[styles.currSign, { color: type === 'given' ? COLORS.expense : COLORS.income }]}>₹</Text>
           <Text 
             style={[
-              styles.amountInput, 
+              { flex: 1, fontSize: 36, fontWeight: '800', paddingVertical: SPACING.xs },
               { color: amount ? (type === 'given' ? COLORS.expense : COLORS.income) : colors.textTertiary }
             ]}
           >
@@ -196,10 +196,14 @@ export default function AddDebtScreen({ navigation }) {
         <TextInput style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surfaceAlt, minHeight: 60 }]} value={note} onChangeText={setNote} placeholder="Add details..." placeholderTextColor={colors.textTertiary} multiline />
 
         {/* Save */}
-        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: type === 'given' ? COLORS.expense : COLORS.income }]} onPress={handleSave} disabled={saving}>
-          <Ionicons name={type === 'given' ? 'arrow-up-circle' : 'arrow-down-circle'} size={20} color="#fff" />
-          <Text style={styles.saveBtnText}>{saving ? 'Saving...' : type === 'given' ? 'Record Lending' : 'Record Borrowing'}</Text>
-        </TouchableOpacity>
+        <Button
+          title={saving ? 'Saving...' : type === 'given' ? 'Record Lending' : 'Record Borrowing'}
+          onPress={handleSave}
+          loading={saving}
+          variant={type === 'given' ? 'danger' : 'success'}
+          icon={<Ionicons name={type === 'given' ? 'arrow-up-circle' : 'arrow-down-circle'} size={20} color="#fff" />}
+          style={{ marginTop: SPACING.md }}
+        />
 
         <View style={{ height: SPACING['3xl'] }} />
       </ScrollView>
@@ -219,16 +223,29 @@ export default function AddDebtScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base, borderBottomWidth: 1 },
+  header: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base, 
+    borderBottomWidth: 1,
+    position: 'relative',
+  },
   headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
   scroll: { padding: SPACING.xl },
   typeRow: { flexDirection: 'row', borderRadius: RADIUS.lg, padding: SPACING.xs, marginBottom: SPACING.xl },
   typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, paddingVertical: SPACING.md, borderRadius: RADIUS.md },
   typeText: { fontSize: FONT_SIZES.base, fontWeight: '700' },
-  amountCard: { flexDirection: 'row', alignItems: 'center', borderRadius: RADIUS.xl, borderWidth: 1.5, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.base, marginBottom: SPACING.sm },
+  amountCard: { flexDirection: 'row', alignItems: 'center', borderRadius: RADIUS.xl, borderWidth: 1, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.base, marginBottom: SPACING.sm },
   currSign: { fontSize: 36, fontWeight: '800', marginRight: SPACING.xs },
-  amountInput: { flex: 1, fontSize: 36, fontWeight: '800', paddingVertical: SPACING.xs },
   label: { fontSize: FONT_SIZES.sm, fontWeight: '600', marginBottom: SPACING.sm, letterSpacing: 0.3 },
   error: { color: COLORS.expense, fontSize: FONT_SIZES.xs, marginBottom: SPACING.sm },
   input: { borderWidth: 1, borderRadius: RADIUS.md, paddingHorizontal: SPACING.md, paddingVertical: SPACING.md, marginBottom: SPACING.xl, fontSize: FONT_SIZES.base },

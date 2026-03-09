@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions, Image
+  StatusBar, Dimensions, Alert, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -38,11 +38,13 @@ export default function TransactionDetailScreen({ navigation, route }) {
     ]);
   };
 
-  const DetailRow = ({ icon, label, value, subValue, color, image }) => (
+  const DetailRow = ({ icon, label, value, subValue, color, image, emoji }) => (
     <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
       <View style={[styles.rowIcon, { backgroundColor: color ? `${color}15` : colors.surfaceAlt }]}>
         {image ? (
           <Image source={{ uri: image }} style={styles.bankLogo} resizeMode="contain" />
+        ) : emoji ? (
+          <Text style={styles.emoji}>{emoji}</Text>
         ) : (
           <Ionicons name={icon} size={20} color={color || colors.textSecondary} />
         )}
@@ -66,19 +68,19 @@ export default function TransactionDetailScreen({ navigation, route }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
 
       {/* ── Header ─────────────────────────────── */}
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[styles.backBtn, { backgroundColor: colors.surfaceAlt }]}
+          style={styles.menuIconWrap}
         >
           <Ionicons name="close" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Transaction Details</Text>
         <TouchableOpacity
           onPress={() => navigation.navigate('AddTransaction', { transaction, isEdit: true })}
-          style={[styles.editBtn, { backgroundColor: `${COLORS.primary}15` }]}
+          style={styles.headerRight}
         >
-          <Ionicons name="pencil" size={18} color={COLORS.primary} />
+          <Ionicons name="pencil" size={24} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
@@ -110,6 +112,17 @@ export default function TransactionDetailScreen({ navigation, route }) {
           {transaction.description ? (
             <Text style={[styles.txnDesc, { color: colors.textSecondary }]}>{transaction.description}</Text>
           ) : null}
+
+          {/* Tags */}
+          {transaction.tags && transaction.tags.length > 0 && (
+            <View style={styles.tagsRow}>
+              {transaction.tags.map((tag, idx) => (
+                <View key={idx} style={[styles.tagChip, { backgroundColor: `${COLORS.primary}12` }]}>
+                  <Text style={[styles.tagText, { color: COLORS.primary }]}>#{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* ── Info Section ────────────────────────── */}
@@ -123,6 +136,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
           
           {transaction.type !== 'transfer' && (
             <DetailRow 
+              emoji={category?.icon}
               icon="grid-outline" 
               label="Category" 
               value={category?.name || 'Uncategorized'} 
@@ -136,12 +150,14 @@ export default function TransactionDetailScreen({ navigation, route }) {
               <DetailRow 
                 label="From Account" 
                 value={transaction.account?.name}
+                subValue={transaction.account?.type}
                 color={transaction.account?.color}
                 image={getAccountLogo(transaction.account)}
               />
               <DetailRow 
                 label="To Account" 
                 value={transaction.toAccount?.name}
+                subValue={transaction.toAccount?.type}
                 color={transaction.toAccount?.color}
                 image={getAccountLogo(transaction.toAccount)}
               />
@@ -151,6 +167,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
               <DetailRow 
                 label={transaction.type === 'expense' ? 'Paid From' : 'Received In'} 
                 value={account?.name || 'Unknown'}
+                subValue={account?.type}
                 color={account?.color}
                 image={getAccountLogo(account)}
               />
@@ -162,14 +179,32 @@ export default function TransactionDetailScreen({ navigation, route }) {
                   subValue={pm.type}
                 />
               )}
+              {(() => {
+                const person = transaction.account?.otherPersons?.find(
+                  p => p._id?.toString() === transaction.otherPersonId?.toString()
+                );
+                if (person) {
+                  return (
+                    <DetailRow 
+                      icon="person-outline" 
+                      label="Third Party" 
+                      value={person.name} 
+                      subValue={`Current Share: ${formatCurrency(person.amount)}`}
+                      color={COLORS.primary}
+                    />
+                  );
+                }
+                return null;
+              })()}
             </>
           )}
 
           {transaction.isRecurring && (
             <DetailRow 
               icon="refresh-outline" 
-              label="Recurring Pattern" 
-              value={`Auto ${transaction.frequency}`}
+              label="Recurring" 
+              value={`Every ${transaction.frequency}`}
+              subValue={transaction.nextOccurrence ? `Next: ${formatDate(transaction.nextOccurrence)}` : undefined}
               color={COLORS.primary}
             />
           )}
@@ -193,13 +228,28 @@ export default function TransactionDetailScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base, 
     borderBottomWidth: 1,
+    position: 'relative',
   },
   headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  editBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
   scroll: { padding: SPACING.xl },
   amountCard: {
     borderRadius: RADIUS.xl, borderWidth: 1, padding: SPACING.xl,
@@ -214,10 +264,14 @@ const styles = StyleSheet.create({
   amount: { fontSize: 36, fontWeight: '800', marginBottom: SPACING.sm },
   txnTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700', textAlign: 'center' },
   txnDesc: { fontSize: FONT_SIZES.sm, marginTop: 4, textAlign: 'center' },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: SPACING.base, justifyContent: 'center' },
+  tagChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full },
+  tagText: { fontSize: FONT_SIZES.xs, fontWeight: '700' },
   section: { borderRadius: RADIUS.xl, borderWidth: 1, paddingHorizontal: SPACING.md, marginBottom: SPACING.xl },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: SPACING.md, borderBottomWidth: 1 },
   rowIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bankLogo: { width: 24, height: 24 },
+  emoji: { fontSize: 22 },
   rowLabel: { fontSize: FONT_SIZES.xs, fontWeight: '600', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
   rowValue: { fontSize: FONT_SIZES.base, fontWeight: '700' },
   rowSubValue: { fontSize: FONT_SIZES.xs, marginTop: 1 },

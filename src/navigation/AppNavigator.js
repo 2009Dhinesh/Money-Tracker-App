@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 // ... auth
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import AddTransactionScreen from '../screens/AddTransactionScreen';
@@ -22,6 +23,8 @@ import ReportsScreen from '../screens/ReportsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ExportScreen from '../screens/ExportScreen';
 import AccountsScreen from '../screens/AccountsScreen';
+import AccountDetailScreen from '../screens/AccountDetailScreen';
+import DeletedAccountsScreen from '../screens/DeletedAccountsScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
 import DebtsScreen from '../screens/DebtsScreen';
@@ -48,6 +51,7 @@ const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
   </Stack.Navigator>
 );
 
@@ -66,6 +70,10 @@ const attachCommonScreens = (StackNav) => (
     <StackNav.Screen name="Export" component={ExportScreen} options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
     <StackNav.Screen name="Goals" component={GoalsScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="Investments" component={InvestmentsScreen} options={{ animation: 'slide_from_right' }} />
+    <StackNav.Screen name="Analysis" component={ReportsScreen} options={{ animation: 'slide_from_right' }} />
+    <StackNav.Screen name="Categories" component={CategoriesScreen} options={{ animation: 'slide_from_right' }} />
+    <StackNav.Screen name="AccountDetail" component={AccountDetailScreen} options={{ animation: 'slide_from_right' }} />
+    <StackNav.Screen name="DeletedAccounts" component={DeletedAccountsScreen} options={{ animation: 'slide_from_right' }} />
   </>
 );
 
@@ -194,7 +202,7 @@ const MainTabs = ({ navigation }) => {
             Dashboard: focused ? 'home' : 'home-outline',
             Transactions: focused ? 'list' : 'list-outline',
             Accounts: focused ? 'wallet' : 'wallet-outline',
-            Categories: focused ? 'grid' : 'grid-outline',
+            Analysis: focused ? 'bar-chart' : 'bar-chart-outline',
           };
           return (
             <View style={focused ? [styles.iconActive, { backgroundColor: `${COLORS.primary}15` }] : null}>
@@ -220,10 +228,15 @@ const MainTabs = ({ navigation }) => {
         }}
       />
       <Tab.Screen name="Accounts" component={AccountsStack} />
-      <Tab.Screen name="Categories" component={CategoriesStack} />
+      <Tab.Screen name="Analysis" component={ReportsStack} />
       <Tab.Screen 
         name="Debts" 
         component={DebtsStack} 
+        options={{ tabBarButton: () => null }} 
+      />
+      <Tab.Screen 
+        name="Budgets" 
+        component={BudgetsStack} 
         options={{ tabBarButton: () => null }} 
       />
     </Tab.Navigator>

@@ -21,9 +21,9 @@ export const COLORS = {
   divider: '#F0F1F5',
 
   // Text
-  textPrimary: '#1A1D2E',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
+  textPrimary: '#0F1117',
+  textSecondary: '#4B5563',
+  textTertiary: '#6B7280',
   textInverse: '#FFFFFF',
 
   // Dark Mode

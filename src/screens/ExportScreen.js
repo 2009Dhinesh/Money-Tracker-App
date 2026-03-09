@@ -204,8 +204,8 @@ export default function ExportScreen({ navigation }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
       
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={openDrawer} style={styles.backBtn}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
           <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Export Data</Text>
@@ -342,17 +342,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingTop: 56,
     paddingBottom: 16,
     paddingHorizontal: SPACING.xl,
+    borderBottomWidth: 1,
+    position: 'relative',
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: 16,
+    padding: 2,
   },
   headerTitle: {
     fontSize: FONT_SIZES.xl,

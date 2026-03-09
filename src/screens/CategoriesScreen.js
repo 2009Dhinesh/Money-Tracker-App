@@ -58,7 +58,7 @@ export default function CategoriesScreen({ navigation }) {
     fetchAccounts();
   }, []);
 
-  const dataList = activeTab === 'payment' ? paymentMethods : categories.filter(c => c.type === activeTab);
+  const dataList = activeTab === 'payment' ? (paymentMethods || []) : (categories || []).filter(c => c.type === activeTab);
   const isLoading = loadingCat || loadingPay;
 
   const openCategoryModal = (category = null, defaultType = 'expense') => {
@@ -190,15 +190,12 @@ export default function CategoriesScreen({ navigation }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
       
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={{ flex: 1 }}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
           <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary, flex: 2, textAlign: 'center' }]}>Manage Data</Text>
-        <TouchableOpacity 
-          style={{ flex: 1, alignItems: 'flex-end', justifyContent: 'center' }}
-          onPress={() => setSelectionModalVisible(true)}
-        >
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Manage Data</Text>
+        <TouchableOpacity onPress={() => setSelectionModalVisible(true)} style={styles.headerRight}>
           <Ionicons name="add" size={28} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
@@ -233,7 +230,15 @@ export default function CategoriesScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={<EmptyState title="No items found" subtitle="Tap the + button to add one" />}
+          ListEmptyComponent={
+            <EmptyState 
+              icon="grid-outline"
+              title="No items found" 
+              subtitle="Tap the + button to add one"
+            >
+              <Button title="+ Add Category" onPress={() => setSelectionModalVisible(true)} />
+            </EmptyState>
+          }
         />
       )}
 
@@ -429,10 +434,28 @@ export default function CategoriesScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base, 
+    borderBottomWidth: 1,
+    position: 'relative',
   },
-  title: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
+  headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
   tabs: { flexDirection: 'row' },
   tab: { flex: 1, alignItems: 'center', paddingVertical: SPACING.md },
   tabText: { fontSize: FONT_SIZES.sm, fontWeight: '700' },

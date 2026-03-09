@@ -15,6 +15,7 @@ import { useAppDrawer } from '../context/DrawerContext';
 import TransactionItem from '../components/TransactionItem';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
+import Button from '../components/Button';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
@@ -229,12 +230,10 @@ export default function TransactionsScreen({ navigation, route }) {
 
       {/* Page Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={openDrawer} style={{ marginRight: SPACING.md }}>
-            <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Transactions</Text>
-        </View>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
+          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Transactions</Text>
       </View>
 
       <FlatList
@@ -248,7 +247,9 @@ export default function TransactionsScreen({ navigation, route }) {
               icon="receipt-outline"
               title="No transactions found"
               subtitle={search ? 'Try a different search term' : 'Add your first transaction!'}
-            />
+            >
+              <Button title="+ Set First Transaction" onPress={() => navigation.navigate('AddTransaction')} />
+            </EmptyState>
           ) : null
         }
         ListFooterComponent={
@@ -396,9 +397,20 @@ export default function TransactionsScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', // Center content
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base,
     borderBottomWidth: 1,
+    position: 'relative',
+  },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
   },
   title: { fontSize: FONT_SIZES['2xl'], fontWeight: '800', letterSpacing: -0.5 },
   addBtn: {

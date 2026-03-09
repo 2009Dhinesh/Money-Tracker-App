@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAccounts } from '../hooks/useAccounts';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import EmptyState from '../components/EmptyState';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
 import { useAppDrawer } from '../context/DrawerContext';
@@ -20,13 +21,13 @@ const ACCOUNT_TYPES = [
   { label: 'Other', value: 'other', icon: '💰' },
 ];
 
-
 const PRESET_COLORS = ['#27AE60', '#2F80ED', '#9B51E0', '#EB5757', '#F2994A', '#6C63FF'];
 
 export default function AccountsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
-  const { accounts, fetchAccounts, addAccount, editAccount, removeAccount, loading } = useAccounts();
+  const { accounts, fetchAccounts, addAccount, editAccount, archiveAccount, removeAccount, loading } = useAccounts();
   const { openDrawer } = useAppDrawer();
+  
   const [modalVisible, setModalVisible] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [currentId, setCurrentId] = useState(null);
@@ -44,6 +45,8 @@ export default function AccountsScreen({ navigation }) {
   
   const [showNewBankInput, setShowNewBankInput] = useState(false);
   const [newBankName, setNewBankName] = useState('');
+  
+  const [otherPersons, setOtherPersons] = useState([]); // [{ name, amount }]
 
   useEffect(() => { fetchAccounts(); }, []);
 
@@ -61,6 +64,7 @@ export default function AccountsScreen({ navigation }) {
     setCustomType('');
     setShowNewBankInput(false);
     setNewBankName('');
+    setOtherPersons([]);
   };
 
   const handleOpenAdd = () => {
@@ -78,6 +82,7 @@ export default function AccountsScreen({ navigation }) {
     setSelectedIcon(acc.icon);
     setIsEdit(true);
     setCurrentId(acc._id);
+    setOtherPersons(acc.otherPersons || []);
     setModalVisible(true);
 
     const isExistingType = ACCOUNT_TYPES.some(t => t.value === acc.type);
@@ -102,31 +107,33 @@ export default function AccountsScreen({ navigation }) {
       const finalType = showTypeInput ? customType.toLowerCase() : type;
       if (showTypeInput && !customType.trim()) return Alert.alert('Error', 'Custom type name is required');
 
-      let resolvedBankName = type === 'bank' ? (showNewBankInput ? newBankName.trim() : bankName) : '';
-      
-      // Fallback: If bank type but no bank name selected, check if Account Name matches a bank
-      if (type === 'bank' && !resolvedBankName && name.trim()) {
-        const matchingBank = BANK_LIST.find(b => b.name.toLowerCase() === name.trim().toLowerCase());
-        if (matchingBank) resolvedBankName = matchingBank.name;
-      }
+        let resolvedBankName = type === 'bank' ? (showNewBankInput ? newBankName.trim() : bankName) : '';
+        
+        if (type === 'bank' && !resolvedBankName && name.trim()) {
+          const matchingBank = BANK_LIST.find(b => b.name.toLowerCase() === name.trim().toLowerCase());
+          if (matchingBank) resolvedBankName = matchingBank.name;
+        }
 
-      let finalBankLogo = bankLogo;
-      
-      // If no logo is set but it's a known bank, pull the logo from BANK_LIST
-      if (type === 'bank' && !finalBankLogo && resolvedBankName) {
-        const knownBank = BANK_LIST.find(b => b.name === resolvedBankName);
-        if (knownBank) finalBankLogo = knownBank.logo;
-      }
+        let finalBankLogo = type === 'bank' ? bankLogo : undefined;
+        
+        if (type === 'bank' && !finalBankLogo && resolvedBankName) {
+          const knownBank = BANK_LIST.find(b => b.name === resolvedBankName);
+          if (knownBank) finalBankLogo = knownBank.logo;
+        }
 
-      const data = {
-        name: name.trim(),
-        type: finalType,
-        bankName: type === 'bank' ? resolvedBankName : undefined,
-        bankLogo: type === 'bank' ? (finalBankLogo || '') : undefined,
-        balance: parseFloat(balance),
-        color: selectedColor,
-        icon: selectedIcon,
-      };
+        const data = {
+          name: name.trim(),
+          type: finalType,
+          bankName: type === 'bank' ? (resolvedBankName || '') : '',
+          bankLogo: type === 'bank' ? (finalBankLogo || '') : '',
+          balance: parseFloat(balance),
+          color: selectedColor,
+          icon: selectedIcon,
+          otherPersons: otherPersons.filter(p => p.name.trim() && !isNaN(parseFloat(p.amount))).map(p => ({
+            name: p.name.trim(),
+            amount: parseFloat(p.amount)
+          }))
+        };
 
       if (isEdit) {
         await editAccount(currentId, data);
@@ -142,11 +149,33 @@ export default function AccountsScreen({ navigation }) {
 
   const handleDelete = (id) => {
     Alert.alert(
-      'Delete Account',
-      'Are you sure? This will only work if there are no transactions linked to this account.',
+      'Remove Account',
+      'How would you like to remove this account? Archiving keeps your records, deleting removes everything.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => removeAccount(id) },
+        { 
+          text: 'Archive (Recommended)', 
+          onPress: async () => {
+            try {
+              await archiveAccount(id);
+              Alert.alert('Success', 'Account archived. You can find it in "Deleted Accounts" in the menu.');
+            } catch (err) {
+              Alert.alert('Error', err.message);
+            }
+          }
+        },
+        { 
+          text: 'Delete All Records', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              await removeAccount(id);
+              Alert.alert('Success', 'Account and records deleted permanently.');
+            } catch (err) {
+              Alert.alert('Delete Failed', err.response?.data?.message || err.message || 'Could not delete.');
+            }
+          } 
+        },
       ]
     );
   };
@@ -156,58 +185,59 @@ export default function AccountsScreen({ navigation }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
 
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.backBtn}>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
           <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Manage Accounts</Text>
-        <TouchableOpacity onPress={handleOpenAdd} style={styles.addBtn}>
+        <TouchableOpacity onPress={handleOpenAdd} style={styles.headerRight}>
           <Ionicons name="add" size={28} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {accounts.map((acc) => (
-          <View key={acc._id} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}>
-            <View style={[styles.cardIcon, { backgroundColor: `${acc.color}18` }]}>
-              {(() => {
-                // Determine which logo to show: 
-                // 1. Direct saved logo
-                // 2. Lookup by bankName field
-                // 3. Lookup by account name (fallback for old data)
-                const logoFromBankList = BANK_LIST.find(b => b.name === acc.bankName || b.name === acc.name)?.logo;
-                const displayLogo = acc.bankLogo || logoFromBankList;
-                
-                if (displayLogo) {
-                  return (
-                    <Image 
-                      source={{ uri: displayLogo }} 
-                      style={styles.logoImage} 
-                      resizeMode="contain"
-                    />
-                  );
-                }
-                return <Text style={{ fontSize: 24 }}>{acc.icon}</Text>;
-              })()}
-            </View>
-            <View style={styles.cardInfo}>
-              <Text style={[styles.name, { color: colors.textPrimary }]}>{acc.name}</Text>
-              <Text style={[styles.type, { color: colors.textSecondary }]}>
-                {acc.type.toUpperCase()}{acc.bankName ? ` • ${acc.bankName}` : ''}
-              </Text>
-            </View>
-            <View style={styles.cardBalance}>
-              <Text style={[styles.balanceNum, { color: colors.textPrimary }]}>₹{acc.balance.toLocaleString()}</Text>
-              <View style={styles.actions}>
-                <TouchableOpacity onPress={() => handleOpenEdit(acc)} style={styles.actionBtn}>
-                  <Ionicons name="pencil" size={18} color={COLORS.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(acc._id)} style={styles.actionBtn}>
-                  <Ionicons name="trash-outline" size={18} color={COLORS.expense} />
-                </TouchableOpacity>
+        {accounts.length > 0 ? (
+          accounts.map((acc) => (
+            <TouchableOpacity 
+              key={acc._id} 
+              onPress={() => handleOpenEdit(acc)}
+              style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}
+            >
+              <View style={[styles.cardIcon, { backgroundColor: `${acc.color}18` }]}>
+                {(() => {
+                  const logoFromBankList = BANK_LIST.find(b => b.name === acc.bankName || b.name === acc.name)?.logo;
+                  const displayLogo = acc.type === 'bank' ? (acc.bankLogo || logoFromBankList) : null;
+                  
+                  if (displayLogo) {
+                    return <Image source={{ uri: displayLogo }} style={styles.logoImage} resizeMode="contain" />;
+                  }
+                  return <Text style={{ fontSize: 24 }}>{acc.icon}</Text>;
+                })()}
               </View>
-            </View>
-          </View>
-        ))}
+              <View style={styles.cardInfo}>
+                <Text style={[styles.name, { color: colors.textPrimary }]}>{acc.name}</Text>
+                <Text style={[styles.type, { color: colors.textSecondary }]}>
+                  {acc.type.toUpperCase()}{acc.bankName ? ` • ${acc.bankName}` : ''}
+                </Text>
+              </View>
+              <View style={styles.cardBalance}>
+                <Text style={[styles.balanceNum, { color: colors.textPrimary }]}>₹{acc.balance.toLocaleString()}</Text>
+                <View style={styles.actions}>
+                  <TouchableOpacity onPress={() => handleDelete(acc._id)} style={styles.actionBtn}>
+                    <Ionicons name="trash-outline" size={18} color={COLORS.expense} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <EmptyState
+            icon="wallet-outline"
+            title="No Accounts Found"
+            subtitle="Add your bank accounts, cash, or wallets to start tracking."
+          >
+            <Button title="+ Set First Account" onPress={handleOpenAdd} />
+          </EmptyState>
+        )}
       </ScrollView>
 
       {/* ── Add/Edit Modal ───────────────────── */}
@@ -317,11 +347,7 @@ export default function AccountsScreen({ navigation }) {
                         }}
                       >
                         {!!bank.logo ? (
-                          <Image 
-                            source={{ uri: bank.logo }} 
-                            style={styles.bankLogoSmall} 
-                            resizeMode="contain"
-                          />
+                          <Image source={{ uri: bank.logo }} style={styles.bankLogoSmall} resizeMode="contain" />
                         ) : (
                           <Text style={{ fontSize: 18 }}>{bank.icon}</Text>
                         )}
@@ -377,6 +403,55 @@ export default function AccountsScreen({ navigation }) {
                 ))}
               </View>
 
+              <View style={{ marginTop: SPACING.xl, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: colors.border }}>
+                <Text style={[styles.label, { color: colors.textPrimary }]}>Third-Party Amounts (Optional)</Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: SPACING.base }}>
+                  Include amounts that belong to others in this account.
+                </Text>
+
+                {otherPersons.map((person, index) => (
+                  <View key={index} style={styles.personRow}>
+                    <View style={{ flex: 2 }}>
+                      <Input
+                        placeholder="Person Name"
+                        value={person.name}
+                        onChangeText={(text) => {
+                          const newPersons = [...otherPersons];
+                          newPersons[index].name = text;
+                          setOtherPersons(newPersons);
+                        }}
+                      />
+                    </View>
+                    <View style={{ flex: 1.5, marginLeft: SPACING.sm }}>
+                      <Input
+                        placeholder="Amount"
+                        keyboardType="numeric"
+                        value={person.amount.toString()}
+                        onChangeText={(text) => {
+                          const newPersons = [...otherPersons];
+                          newPersons[index].amount = text;
+                          setOtherPersons(newPersons);
+                        }}
+                      />
+                    </View>
+                    <TouchableOpacity 
+                      onPress={() => setOtherPersons(otherPersons.filter((_, i) => i !== index))}
+                      style={styles.personRemove}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={COLORS.expense} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                <TouchableOpacity 
+                  onPress={() => setOtherPersons([...otherPersons, { name: '', amount: '0' }])}
+                  style={[styles.addPersonBtn, { borderColor: COLORS.primary }]}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
+                  <Text style={{ color: COLORS.primary, fontWeight: '700', marginLeft: 4 }}>Add Person</Text>
+                </TouchableOpacity>
+              </View>
+
               <Button
                 title={isEdit ? 'Update Account' : 'Create Account'}
                 onPress={handleSave}
@@ -394,13 +469,28 @@ export default function AccountsScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: 56, paddingBottom: SPACING.md, paddingHorizontal: SPACING.xl,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    paddingTop: 56, 
+    paddingBottom: SPACING.md, 
+    paddingHorizontal: SPACING.xl,
     borderBottomWidth: 1,
+    position: 'relative',
   },
-  headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700', flex: 1, textAlign: 'center' },
-  backBtn: { padding: 4 },
-  addBtn: { padding: 4 },
+  headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700' },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.md,
+    padding: 2,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.md,
+    padding: 2,
+  },
   scroll: { padding: SPACING.xl },
   card: {
     flexDirection: 'row', alignItems: 'center',
@@ -433,5 +523,11 @@ const styles = StyleSheet.create({
   colorActive: { borderWidth: 3, borderColor: '#fff' },
   smallBtn: { padding: SPACING.sm, borderRadius: RADIUS.md, backgroundColor: '#f0f0f0' },
   smallBtnActive: { borderWidth: 2, borderColor: COLORS.primary },
+  personRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.xs },
+  personRemove: { padding: 8, marginLeft: 4 },
+  addPersonBtn: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', 
+    padding: SPACING.sm, borderRadius: RADIUS.md, borderWidth: 1, borderStyle: 'dashed',
+    marginTop: SPACING.sm
+  },
 });
-

@@ -13,9 +13,9 @@ export const useDebts = () => {
     setError(null);
     try {
       const res = await debtApi.getDebts(params);
-      setDebts(res.debts);
+      setDebts(res.debts || []);
       // Sync notifications with due dates
-      syncDebtsWithNotifications(res.debts);
+      syncDebtsWithNotifications(res.debts || []);
     } catch (err) {
       setError(err.message);
     } finally {

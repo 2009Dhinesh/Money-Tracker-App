@@ -4,8 +4,8 @@ import * as SecureStore from 'expo-secure-store';
 // Production / Render Backend Link
 //const BASE_URL = 'https://salary-calculation-ic6k.onrender.com/api';
 // const BASE_URL = 'http://10.59.115.32:5000/api'; // mobile ip
-const BASE_URL = 'http://192.168.1.42:5000/api'; // pc ip
-//nst BASE_URL = 'http://192.168.1.37:5000/api'; // Local IP (Physical device)
+// const BASE_URL = 'http://10.59.115.32:5000/api'; // pc ip
+const BASE_URL = 'http://192.168.1.38:5000'; // Local IP (Physical device)
 // const BASE_URL = 'http://10.0.2.2:5000/api'; // Android emulator
 
 const api = axios.create({

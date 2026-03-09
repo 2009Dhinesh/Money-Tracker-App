@@ -123,27 +123,27 @@ export default function BudgetScreen({ navigation }) {
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={openDrawer} style={{ marginRight: SPACING.md }}>
-            <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Budgets</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{`${MONTH_NAMES[month - 1]} ${year}`}</Text>
-          </View>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
+          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        </TouchableOpacity>
+        
+        <View style={{ alignItems: 'center' }}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Budgets</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{`${MONTH_NAMES[month - 1]} ${year}`}</Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
+
+        <View style={styles.headerRight}>
           <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
+            style={styles.addBtn}
             onPress={() => navigation.navigate('Categories')}
           >
-            <Ionicons name="grid-outline" size={20} color={colors.textSecondary} />
+            <Ionicons name="grid-outline" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: COLORS.primary }]}
+            style={styles.addBtn}
             onPress={() => openModal()}
           >
-            <Ionicons name="add" size={20} color="#fff" />
+            <Ionicons name="add" size={28} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -184,7 +184,6 @@ export default function BudgetScreen({ navigation }) {
                 {/* Card Header */}
                 <View style={styles.cardHeader}>
                   <View style={styles.catRow}>
-                    <Text style={styles.catIcon}>{budget.category?.icon || '💰'}</Text>
                     <View>
                       <Text style={[styles.catName, { color: colors.textPrimary }]}>
                         {budget.category?.name}
@@ -284,7 +283,6 @@ export default function BudgetScreen({ navigation }) {
                   ]}
                   onPress={() => setForm((f) => ({ ...f, category: cat._id }))}
                 >
-                  <Text>{cat.icon}</Text>
                   <Text style={[styles.catChipText, { color: form.category === cat._id ? cat.color : colors.textSecondary }]}>{cat.name}</Text>
                 </TouchableOpacity>
               ))}
@@ -344,12 +342,30 @@ export default function BudgetScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base,
     borderBottomWidth: 1,
+    position: 'relative',
+  },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.base,
+    flexDirection: 'row',
+    gap: SPACING.sm,
   },
   title: { fontSize: FONT_SIZES['2xl'], fontWeight: '800', letterSpacing: -0.5 },
-  subtitle: { fontSize: FONT_SIZES.sm, fontWeight: '500', marginTop: 2 },
+  subtitle: { fontSize: FONT_SIZES.xs, fontWeight: '500', marginTop: -2 },
   addBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: SPACING.xl },
   alertSummary: {

@@ -11,7 +11,7 @@ export const useGoals = () => {
     setError(null);
     try {
       const res = await goalApi.getGoals();
-      setGoals(res.goals);
+      setGoals(res.goals || []);
     } catch (err) {
       setError(err.message);
     } finally {
