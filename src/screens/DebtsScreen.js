@@ -12,6 +12,8 @@ import { useAccounts } from '../hooks/useAccounts';
 import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
+import Button from '../components/Button';
+import EmptyState from '../components/EmptyState';
 
 const STATUS_CONFIG = {
   pending: { label: 'Pending', color: COLORS.warning, bg: COLORS.warningLight, icon: 'time-outline' },
@@ -81,7 +83,7 @@ export default function DebtsScreen({ navigation }) {
 
   const onRefresh = async () => { setRefreshing(true); await loadAll(); setRefreshing(false); };
 
-  const filteredDebts = debts.filter(d => d.type === activeTab);
+  const filteredDebts = (debts || []).filter(d => d.type === activeTab);
 
   const givenData = summary?.given || { total: 0, recovered: 0, pending: 0, count: 0 };
   const borrowedData = summary?.borrowed || { total: 0, repaid: 0, owing: 0, count: 0 };
@@ -265,13 +267,16 @@ export default function DebtsScreen({ navigation }) {
 
         {/* Debt List */}
         {filteredDebts.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name={activeTab === 'given' ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline'} size={56} color={colors.textTertiary} />
-            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No records yet</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
-              Tap + to add {activeTab === 'given' ? 'money given' : 'money borrowed'}
-            </Text>
-          </View>
+          <EmptyState
+            icon={activeTab === 'given' ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline'}
+            title="No records yet"
+            subtitle={`Tap + to add ${activeTab === 'given' ? 'money given' : 'money borrowed'}`}
+          >
+            <Button 
+              title={activeTab === 'given' ? "+ Set First Record" : "+ Set First Record"} 
+              onPress={() => navigation.navigate('AddDebt', { contacts, accounts })}
+            />
+          </EmptyState>
         ) : (
           filteredDebts.map(debt => {
             const sc = STATUS_CONFIG[debt.status];

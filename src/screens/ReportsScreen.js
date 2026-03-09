@@ -115,18 +115,16 @@ export default function ReportsScreen({ navigation }) {
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={openDrawer} style={{ marginRight: SPACING.md }}>
-            <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Analysis</Text>
-        </View>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
+          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Analysis</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity 
-            style={[styles.exportBtn, { backgroundColor: `${COLORS.primary}15` }]} 
+            style={styles.exportBtn} 
             onPress={() => navigation.navigate('Export')}
           >
-            <Ionicons name="download-outline" size={18} color={COLORS.primary} />
+            <Ionicons name="download-outline" size={24} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -286,7 +284,7 @@ export default function ReportsScreen({ navigation }) {
           {[
             { label: 'Income', value: summary?.totalIncome || 0, color: COLORS.income, icon: 'arrow-down-circle' },
             { label: 'Expense', value: summary?.totalExpense || 0, color: COLORS.expense, icon: 'arrow-up-circle' },
-            { label: 'Saving', value: (summary?.totalIncome || 0) - (summary?.totalExpense || 0), color: COLORS.primary, icon: 'wallet' },
+            { label: 'Saving', value: summary?.previousBalance || 0, color: COLORS.primary, icon: 'wallet' },
           ].map((s) => (
             <View
               key={s.label}
@@ -389,12 +387,30 @@ export default function ReportsScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base,
     borderBottomWidth: 1,
+    position: 'relative',
+  },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
   },
   title: { fontSize: FONT_SIZES['2xl'], fontWeight: '800', letterSpacing: -0.5 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  headerRight: { 
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.base,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: SPACING.md 
+  },
   exportBtn: {
     padding: 8,
     borderRadius: RADIUS.md,

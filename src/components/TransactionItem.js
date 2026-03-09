@@ -65,6 +65,23 @@ const TransactionItem = memo(({ transaction, onPress, onLongPress, style }) => {
               <Text style={[styles.accNameText, { color: colors.textTertiary }]} numberOfLines={1}>
                 {transaction.account.name}
               </Text>
+              {transaction.account.isArchived && (
+                <View style={styles.archivedBadge}>
+                  <Text style={styles.archivedText}>ARCHIVED</Text>
+                </View>
+              )}
+              {(() => {
+                const person = transaction.account?.otherPersons?.find(p => p._id === transaction.otherPersonId);
+                if (person) {
+                  return (
+                    <View style={styles.personBadge}>
+                      <Ionicons name="person" size={8} color={COLORS.primary} style={{ marginRight: 2 }} />
+                      <Text style={styles.personBadgeText}>{person.name}</Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
             </>
           )}
 
@@ -172,6 +189,32 @@ const styles = StyleSheet.create({
   accLogo: { width: 12, height: 12 },
   accEmoji: { fontSize: 8 },
   accNameText: { fontSize: 10, fontWeight: '500' },
+  archivedBadge: {
+    backgroundColor: `${COLORS.expense}15`,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 4,
+  },
+  archivedText: {
+    color: COLORS.expense,
+    fontSize: 7,
+    fontWeight: '800',
+  },
+  personBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}12`,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 4,
+  },
+  personBadgeText: {
+    color: COLORS.primary,
+    fontSize: 8,
+    fontWeight: '700',
+  },
 });
 
 export default TransactionItem;

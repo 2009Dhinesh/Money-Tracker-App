@@ -1,10 +1,10 @@
 import api from './axios';
 
 const landApi = {
-  getAssets: () => api.get('/land'),
-  addAsset: (data) => api.post('/land', data),
-  updateAsset: (id, data) => api.put(`/land/${id}`, data),
-  deleteAsset: (id) => api.delete(`/land/${id}`),
+  getAssets: () => api.get('/api/land'),
+  addAsset: (data) => api.post('/api/land', data),
+  updateAsset: (id, data) => api.put(`/api/land/${id}`, data),
+  deleteAsset: (id) => api.delete(`/api/land/${id}`),
 };
 
 export default landApi;

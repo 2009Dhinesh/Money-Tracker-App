@@ -10,6 +10,7 @@ import { useAppDrawer } from '../context/DrawerContext';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
+import EmptyState from '../components/EmptyState';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 
 const ICONS = ['💵', '💳', '📱', '🏦', '✍️', '✨', '🌍', '🪙', '📦', '🎁', '🛒', '🛍️', '💰', '💸', '🤑'];
@@ -147,12 +148,12 @@ export default function PaymentMethodsScreen({ navigation }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
       
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
           <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Payment Methods</Text>
-        <TouchableOpacity onPress={() => openModal()}>
+        <TouchableOpacity onPress={() => openModal()} style={styles.headerRight}>
           <Ionicons name="add" size={28} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
@@ -163,6 +164,15 @@ export default function PaymentMethodsScreen({ navigation }) {
         renderItem={renderMethod}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <EmptyState
+            icon="card-outline"
+            title="No payment methods"
+            subtitle="Add your first payment method like Cash or Bank"
+          >
+            <Button title="+ Set First Method" onPress={() => openModal()} />
+          </EmptyState>
+        }
       />
 
       {/* Modal */}
@@ -220,11 +230,28 @@ export default function PaymentMethodsScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base,
     borderBottomWidth: 1,
+    position: 'relative',
   },
-  title: { fontSize: FONT_SIZES.xl, fontWeight: '800' },
+  title: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
+  },
   list: { padding: SPACING.xl },
   card: {
     flexDirection: 'row', alignItems: 'center', padding: SPACING.md,

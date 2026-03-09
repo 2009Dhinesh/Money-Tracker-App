@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Switch, Alert, Modal, TouchableWithoutFeedback, Platform,
+  Switch, Alert, Modal, TouchableWithoutFeedback, Platform, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +14,7 @@ import BADGES, { getAchievements } from '../utils/gamificationService';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { storage } from '../utils/storage';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
+import { useAppDrawer } from '../context/DrawerContext';
 import PinPad from '../components/PinPad';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY'];
@@ -22,7 +23,9 @@ export default function ProfileScreen({ navigation }) {
   const { user, logout, updateUser, setIsBiometricEnabled, appPin, setAppPin } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
   const { summary, fetchSummary } = useTransactions();
+  const { openDrawer } = useAppDrawer();
 
+  const [activeTab, setActiveTab] = useState('account'); // 'account', 'security', 'preferences', 'badges'
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [currency, setCurrency] = useState(user?.currency || 'INR');
@@ -236,6 +239,13 @@ export default function ProfileScreen({ navigation }) {
           colors={['#1A1044', '#3D2B8E', '#6C63FF']}
           style={styles.headerGrad}
         >
+          <View style={styles.topNav}>
+            <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
+              <Ionicons name="menu-outline" size={28} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Profile</Text>
+          </View>
+
           <View style={styles.avatarWrap}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
@@ -244,205 +254,249 @@ export default function ProfileScreen({ navigation }) {
         </LinearGradient>
 
         <View style={[styles.content, { backgroundColor: colors.background }]}>
-
-          {/* ── Edit Profile ────────────────── */}
-          <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Profile Info</Text>
-              <TouchableOpacity onPress={() => setEditing((e) => !e)}>
-                <Text style={[styles.editToggle, { color: COLORS.primary }]}>
-                  {editing ? 'Cancel' : 'Edit'}
+          
+          {/* Tabs */}
+          <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
+            {[
+              { id: 'account', label: 'Account', icon: 'person-outline' },
+              { id: 'security', label: 'Security', icon: 'shield-checkmark-outline' },
+              { id: 'preferences', label: 'Prefs', icon: 'settings-outline' },
+              { id: 'badges', label: 'Badges', icon: 'trophy-outline' },
+            ].map((tab) => (
+              <TouchableOpacity
+                key={tab.id}
+                onPress={() => {
+                  setActiveTab(tab.id);
+                  setEditing(false);
+                }}
+                style={[
+                  styles.tab,
+                  activeTab === tab.id && { borderBottomColor: COLORS.primary, borderBottomWidth: 3 }
+                ]}
+              >
+                <Ionicons 
+                  name={tab.icon} 
+                  size={18} 
+                  color={activeTab === tab.id ? COLORS.primary : colors.textSecondary} 
+                />
+                <Text style={[
+                  styles.tabText,
+                  { color: activeTab === tab.id ? COLORS.primary : colors.textSecondary }
+                ]}>
+                  {tab.label}
                 </Text>
               </TouchableOpacity>
-            </View>
-
-            {editing ? (
-              <>
-                <Input
-                  label="Full Name"
-                  value={name}
-                  onChangeText={setName}
-                  icon="person-outline"
-                  placeholder="Your name"
-                />
-                <Input
-                  label="Monthly Income (₹)"
-                  value={monthlyIncome}
-                  onChangeText={setMonthlyIncome}
-                  keyboardType="numeric"
-                  icon="cash-outline"
-                  placeholder="e.g. 50000"
-                />
-                {/* Currency Picker */}
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Currency</Text>
-                <View style={styles.currencyRow}>
-                  {CURRENCIES.map((c) => (
-                    <TouchableOpacity
-                      key={c}
-                      style={[
-                        styles.currencyChip,
-                        { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                        currency === c && { backgroundColor: `${COLORS.primary}18`, borderColor: COLORS.primary },
-                      ]}
-                      onPress={() => setCurrency(c)}
-                    >
-                      <Text style={[styles.currencyText, { color: currency === c ? COLORS.primary : colors.textSecondary }]}>
-                        {c}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <Button title="Save Changes" onPress={handleSave} loading={loading} style={{ marginTop: SPACING.sm }} />
-              </>
-            ) : (
-              <>
-                <ProfileRow icon="person-outline" label="Name" value={user?.name} colors={colors} />
-                <ProfileRow icon="mail-outline" label="Email" value={user?.email} colors={colors} />
-                <ProfileRow icon="cash-outline" label="Monthly Income" value={`₹${user?.monthlyIncome?.toLocaleString() || 0}`} colors={colors} />
-                <ProfileRow icon="pricetag-outline" label="Currency" value={user?.currency || 'INR'} colors={colors} />
-              </>
-            )}
+            ))}
           </View>
 
-          {/* ── Preferences ─────────────────── */}
-          <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Preferences</Text>
-
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
-                  <Ionicons name={isDark ? 'moon' : 'sunny'} size={18} color={COLORS.primary} />
+          {activeTab === 'account' && (
+            <>
+              {/* ── Edit Profile ────────────────── */}
+              <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Profile Info</Text>
+                  <TouchableOpacity onPress={() => setEditing((e) => !e)}>
+                    <Text style={[styles.editToggle, { color: COLORS.primary }]}>
+                      {editing ? 'Cancel' : 'Edit'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Dark Mode</Text>
+
+                {editing ? (
+                  <>
+                    <Input
+                      label="Full Name"
+                      value={name}
+                      onChangeText={setName}
+                      icon="person-outline"
+                      placeholder="Your name"
+                    />
+                    <Input
+                      label="Monthly Income (₹)"
+                      value={monthlyIncome}
+                      onChangeText={setMonthlyIncome}
+                      keyboardType="numeric"
+                      icon="cash-outline"
+                      placeholder="e.g. 50000"
+                    />
+                    {/* Currency Picker */}
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Currency</Text>
+                    <View style={styles.currencyRow}>
+                      {CURRENCIES.map((c) => (
+                        <TouchableOpacity
+                          key={c}
+                          style={[
+                            styles.currencyChip,
+                            { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                            currency === c && { backgroundColor: `${COLORS.primary}18`, borderColor: COLORS.primary },
+                          ]}
+                          onPress={() => setCurrency(c)}
+                        >
+                          <Text style={[styles.currencyText, { color: currency === c ? COLORS.primary : colors.textSecondary }]}>
+                            {c}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <Button title="Save Changes" onPress={handleSave} loading={loading} style={{ marginTop: SPACING.sm }} />
+                  </>
+                ) : (
+                  <>
+                    <ProfileRow icon="person-outline" label="Name" value={user?.name} colors={colors} />
+                    <ProfileRow icon="mail-outline" label="Email" value={user?.email} colors={colors} />
+                    <ProfileRow icon="cash-outline" label="Monthly Income" value={`₹${user?.monthlyIncome?.toLocaleString() || 0}`} colors={colors} />
+                    <ProfileRow icon="pricetag-outline" label="Currency" value={user?.currency || 'INR'} colors={colors} />
+                  </>
+                )}
               </View>
-              <Switch
-                value={isDark}
-                onValueChange={() => toggleTheme()}
-                trackColor={{ false: colors.border, true: COLORS.primaryLight }}
-                thumbColor={isDark ? COLORS.primary : '#f4f3f4'}
+
+              <Button
+                title="Sign Out"
+                onPress={handleLogout}
+                variant="danger"
+                icon={<Ionicons name="log-out-outline" size={18} color={COLORS.expense} />}
+                style={{ marginTop: SPACING.md }}
               />
-            </View>
-          </View>
-          
-          {/* ── Achievements ─────────────────── */}
-          <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: SPACING.md }]}>Achievements</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: SPACING.md }}>
-              {BADGES.map((badge) => (
-                <View 
-                  key={badge.id} 
-                  style={[
-                    styles.badgeCard, 
-                    { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                    !getAchievements(user, summary).find(a => a.id === badge.id && a.isEarned) && { opacity: 0.3 }
-                  ]}
+            </>
+          )}
+
+          {activeTab === 'preferences' && (
+            <>
+              {/* ── Preferences ─────────────────── */}
+              <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Preferences</Text>
+
+                <View style={styles.settingRow}>
+                  <View style={styles.settingLeft}>
+                    <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
+                      <Ionicons name={isDark ? 'moon' : 'sunny'} size={18} color={COLORS.primary} />
+                    </View>
+                    <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Dark Mode</Text>
+                  </View>
+                  <Switch
+                    value={isDark}
+                    onValueChange={() => toggleTheme()}
+                    trackColor={{ false: colors.border, true: COLORS.primaryLight }}
+                    thumbColor={isDark ? COLORS.primary : '#f4f3f4'}
+                  />
+                </View>
+              </View>
+
+              {/* ── Data Management ──────────────── */}
+              <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Data Management</Text>
+                
+                <TouchableOpacity 
+                  style={styles.settingRow}
+                  onPress={() => navigation.navigate('Categories')}
                 >
-                  <Text style={styles.badgeIcon}>{badge.icon}</Text>
-                  <Text style={[styles.badgeTitle, { color: colors.textPrimary }]} numberOfLines={1}>{badge.title}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* ── Data Management ──────────────── */}
-          <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Data Management</Text>
-            
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('Categories')}
-            >
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
-                  <Ionicons name="grid-outline" size={18} color={COLORS.primary} />
-                </View>
-                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Manage Categories</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('PaymentMethods')}
-            >
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
-                  <Ionicons name="card-outline" size={18} color={COLORS.primary} />
-                </View>
-                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Manage Payment Methods</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* ── Security ────────────────────── */}
-          <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Security</Text>
-            
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => { setSecurityMode('change'); setSecurityModalVisible(true); }}
-            >
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
-                  <Ionicons name="lock-closed-outline" size={18} color={COLORS.primary} />
-                </View>
-                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Change Password</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-            </TouchableOpacity>
-
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
-                  <Ionicons name="keypad-outline" size={18} color={COLORS.primary} />
-                </View>
-                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>App PIN</Text>
-              </View>
-              {appPin ? (
-                <TouchableOpacity onPress={() => { setPinMode('remove'); setPinInput(''); setPinModalVisible(true); }}>
-                  <Text style={{ color: COLORS.expense, fontWeight: '600' }}>Remove</Text>
+                  <View style={styles.settingLeft}>
+                    <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
+                      <Ionicons name="grid-outline" size={18} color={COLORS.primary} />
+                    </View>
+                    <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Manage Categories</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={() => { setPinMode('set'); setPinInput(''); setPinModalVisible(true); }}>
-                  <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Set PIN</Text>
+
+                <TouchableOpacity 
+                  style={styles.settingRow}
+                  onPress={() => navigation.navigate('PaymentMethods')}
+                >
+                  <View style={styles.settingLeft}>
+                    <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
+                      <Ionicons name="card-outline" size={18} color={COLORS.primary} />
+                    </View>
+                    <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Manage Payment Methods</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
-              )}
+              </View>
+
+              <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>App Info</Text>
+                 <ProfileRow icon="information-circle-outline" label="Version" value="1.0.0" colors={colors} />
+                 <ProfileRow icon="code-slash-outline" label="Built with" value="MERN Stack" colors={colors} />
+              </View>
+            </>
+          )}
+
+          {activeTab === 'badges' && (
+            /* ── Achievements ─────────────────── */
+            <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: SPACING.md }]}>Achievements</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md, justifyContent: 'center' }}>
+                {BADGES.map((badge) => (
+                  <View 
+                    key={badge.id} 
+                    style={[
+                      styles.badgeCard, 
+                      { backgroundColor: colors.surfaceAlt, borderColor: colors.border, width: (width - SPACING.xl * 4) / 3 },
+                      !getAchievements(user, summary).find(a => a.id === badge.id && a.isEarned) && { opacity: 0.3 }
+                    ]}
+                  >
+                    <Text style={styles.badgeIcon}>{badge.icon}</Text>
+                    <Text style={[styles.badgeTitle, { color: colors.textPrimary }]} numberOfLines={1}>{badge.title}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
+          )}
 
-            {hasBiometricHardware && (
+          {activeTab === 'security' && (
+            /* ── Security ────────────────────── */
+            <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Security</Text>
+              
+              <TouchableOpacity 
+                style={styles.settingRow}
+                onPress={() => { setSecurityMode('change'); setSecurityModalVisible(true); }}
+              >
+                <View style={styles.settingLeft}>
+                  <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
+                    <Ionicons name="lock-closed-outline" size={18} color={COLORS.primary} />
+                  </View>
+                  <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Change Password</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              </TouchableOpacity>
+
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
-                    <Ionicons name="finger-print-outline" size={18} color={COLORS.primary} />
+                    <Ionicons name="keypad-outline" size={18} color={COLORS.primary} />
                   </View>
-                  <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Biometric Lock</Text>
+                  <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>App PIN</Text>
                 </View>
-                <Switch
-                  value={biometricEnabled}
-                  onValueChange={handleBiometricToggle}
-                  trackColor={{ false: colors.border, true: COLORS.primaryLight }}
-                  thumbColor={biometricEnabled ? COLORS.primary : '#f4f3f4'}
-                />
+                {appPin ? (
+                  <TouchableOpacity onPress={() => { setPinMode('remove'); setPinInput(''); setPinModalVisible(true); }}>
+                    <Text style={{ color: COLORS.expense, fontWeight: '600' }}>Remove</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => { setPinMode('set'); setPinInput(''); setPinModalVisible(true); }}>
+                    <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Set PIN</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            )}
-          </View>
 
-          {/* ── App Info ────────────────────── */}
-          <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>App Info</Text>
-            <ProfileRow icon="information-circle-outline" label="Version" value="1.0.0" colors={colors} />
-            <ProfileRow icon="code-slash-outline" label="Built with" value="MERN Stack" colors={colors} />
-          </View>
-
-          {/* ── Sign Out ────────────────────── */}
-          <Button
-            title="Sign Out"
-            onPress={handleLogout}
-            variant="danger"
-            icon={<Ionicons name="log-out-outline" size={18} color={COLORS.expense} />}
-            style={{ marginTop: SPACING.sm }}
-          />
+              {hasBiometricHardware && (
+                <View style={styles.settingRow}>
+                  <View style={styles.settingLeft}>
+                    <View style={[styles.settingIcon, { backgroundColor: `${COLORS.primary}18` }]}>
+                      <Ionicons name="finger-print-outline" size={18} color={COLORS.primary} />
+                    </View>
+                    <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Biometric Lock</Text>
+                  </View>
+                  <Switch
+                    value={biometricEnabled}
+                    onValueChange={handleBiometricToggle}
+                    trackColor={{ false: colors.border, true: COLORS.primaryLight }}
+                    thumbColor={biometricEnabled ? COLORS.primary : '#f4f3f4'}
+                  />
+                </View>
+              )}
+            </View>
+          )}
 
           <View style={{ height: SPACING['4xl'] }} />
         </View>
@@ -638,6 +692,8 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
+const { width } = Dimensions.get('window');
+
 const ProfileRow = ({ icon, label, value, colors }) => (
   <View style={rowStyles.row}>
     <View style={[rowStyles.icon, { backgroundColor: colors.surfaceAlt }]}>
@@ -661,8 +717,29 @@ const rowStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   headerGrad: {
-    paddingTop: 60, paddingBottom: SPACING['2xl'],
+    paddingTop: 56, paddingBottom: SPACING['2xl'],
     alignItems: 'center', gap: SPACING.sm,
+  },
+  topNav: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.md,
+    position: 'relative',
+  },
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.md,
+    padding: 2,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES['2xl'],
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
   },
   avatarWrap: {
     width: 80, height: 80, borderRadius: 40,
@@ -674,7 +751,10 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: FONT_SIZES['3xl'], fontWeight: '800', color: '#fff' },
   userName: { fontSize: FONT_SIZES.xl, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
   userEmail: { fontSize: FONT_SIZES.sm, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
-  content: { borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, padding: SPACING.xl },
+  content: { borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, padding: SPACING.xl, paddingBottom: 100 },
+  tabs: { flexDirection: 'row', marginBottom: SPACING.xl, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: SPACING.md, gap: 4 },
+  tabText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   section: {
     borderRadius: RADIUS.xl, borderWidth: 1,
     padding: SPACING.base, marginBottom: SPACING.base,

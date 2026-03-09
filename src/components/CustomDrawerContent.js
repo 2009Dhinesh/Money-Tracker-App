@@ -143,6 +143,14 @@ export default function CustomDrawerContent({ onClose }) {
           />
 
           <DrawerItem 
+            icon="grid-outline" 
+            label="Categories" 
+            onPress={() => navigateTo('Categories')} 
+            isActive={activeRouteName === 'Categories' || activeRouteName === 'CategoriesMain'} 
+            colors={colors} 
+          />
+
+          <DrawerItem 
             icon="trending-up-outline" 
             label="Investments" 
             onPress={() => navigateTo('Investments')} 
@@ -163,6 +171,20 @@ export default function CustomDrawerContent({ onClose }) {
             label="Goals" 
             onPress={() => navigateTo('Goals')} 
             isActive={activeRouteName === 'Goals'} 
+            colors={colors} 
+          />
+          <DrawerItem 
+            icon="pie-chart-outline" 
+            label="Budgets" 
+            onPress={() => navigateTo('Budgets')} 
+            isActive={activeRouteName === 'Budgets' || activeRouteName === 'BudgetsMain'} 
+            colors={colors} 
+          />
+          <DrawerItem 
+            icon="trash-bin-outline" 
+            label="Deleted Accounts" 
+            onPress={() => navigateTo('DeletedAccounts')} 
+            isActive={activeRouteName === 'DeletedAccounts'} 
             colors={colors} 
           />
         </View>

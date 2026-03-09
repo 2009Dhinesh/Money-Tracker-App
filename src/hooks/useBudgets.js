@@ -11,7 +11,7 @@ export const useBudgets = () => {
     setError(null);
     try {
       const res = await budgetApi.getAll(params);
-      setBudgets(res.budgets);
+      setBudgets(res.budgets || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -59,7 +59,7 @@ export const useBudgets = () => {
     setBudgets((prev) => prev.filter((b) => b._id !== id));
   }, []);
 
-  const alertBudgets = budgets.filter((b) => b.isNearLimit || b.isOverBudget);
+  const alertBudgets = (budgets || []).filter((b) => b.isNearLimit || b.isOverBudget);
 
   return {
     budgets,

@@ -159,8 +159,11 @@ export default function DashboardScreen({ navigation }) {
         {/* ── Balance Card ───────────────────────── */}
         <BalanceCard
           balance={summary?.balance ?? 0}
+          otherPersonsTotal={summary?.otherPersonsTotal ?? 0}
           income={summary?.monthly?.income ?? 0}
           expense={summary?.monthly?.expense ?? 0}
+          incomeCount={summary?.monthly?.incomeCount ?? 0}
+          expenseCount={summary?.monthly?.expenseCount ?? 0}
           month={formatMonth(now)}
         />
 
@@ -168,7 +171,7 @@ export default function DashboardScreen({ navigation }) {
 
         {/* ── Accounts List ──────────────────────── */}
         <View style={styles.sectionTitleRow}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>My Accounts</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>My Accounts {summary?.accounts?.length > 0 ? `(${summary.accounts.length})` : ''}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Accounts')}>
             <Text style={[styles.sectionLink, { color: COLORS.primary }]}>Manage</Text>
           </TouchableOpacity>
@@ -183,7 +186,7 @@ export default function DashboardScreen({ navigation }) {
             <TouchableOpacity 
               key={acc._id} 
               style={[styles.accCard, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}
-              onPress={() => navigation.navigate('Transactions', { account: acc._id })}
+              onPress={() => navigation.navigate('AccountDetail', { accountId: acc._id })}
             >
               <View style={[styles.accIconBg, { backgroundColor: `${acc.color}18` }]}>
                 {(() => {
@@ -212,7 +215,7 @@ export default function DashboardScreen({ navigation }) {
 
         {/* ── Wealth Quick Access ──────────────────── */}
         <View style={styles.sectionTitleRow}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Wealth</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Wealth (4)</Text>
           <TouchableOpacity onPress={() => navigation.navigate('WealthDashboard')}>
             <Text style={[styles.sectionLink, { color: COLORS.primary }]}>Net Worth →</Text>
           </TouchableOpacity>
@@ -251,10 +254,10 @@ export default function DashboardScreen({ navigation }) {
         {/* ── Quick Actions ──────────────────────── */}
         <View style={styles.quickActions}>
           {[
-            { label: 'Add Expense', icon: 'arrow-up-circle', color: COLORS.expense, type: 'expense' },
-            { label: 'Add Income', icon: 'arrow-down-circle', color: COLORS.income, type: 'income' },
+            { label: 'Debts', icon: 'people', color: COLORS.expense, screen: 'Debts' },
+            { label: 'Investment', icon: 'trending-up', color: COLORS.income, screen: 'Investments' },
             { label: 'Goals', icon: 'trophy', color: '#6C63FF', screen: 'Goals' },
-            { label: 'Analysis', icon: 'bar-chart', color: '#FFB020', screen: 'Analysis' },
+            { label: 'Categories', icon: 'grid', color: '#FFB020', screen: 'Categories' },
           ].map((action) => (
             <TouchableOpacity
               key={action.label}
@@ -303,53 +306,10 @@ export default function DashboardScreen({ navigation }) {
           </View>
         )}
 
-        {/* ── This Month Stats ───────────────────── */}
-        <View style={styles.monthlyStats}>
-          <StatCard
-            label="Income"
-            value={formatCurrencyShort(summary?.monthly?.income ?? 0)}
-            count={summary?.monthly?.incomeCount ?? 0}
-            color={COLORS.income}
-            icon="arrow-down-circle"
-            bg={colors.surface}
-            border={colors.border}
-          />
-          <StatCard
-            label="Expenses"
-            value={formatCurrencyShort(summary?.monthly?.expense ?? 0)}
-            count={summary?.monthly?.expenseCount ?? 0}
-            color={COLORS.expense}
-            icon="arrow-up-circle"
-            bg={colors.surface}
-            border={colors.border}
-          />
-        </View>
 
-        {/* ── Data Management Quick Access ────────── */}
-        <View style={styles.sectionTitleRow}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Data Management</Text>
-        </View>
-        <View style={styles.dataMgmtRow}>
-          <TouchableOpacity 
-            style={[styles.dataBlock, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}
-            onPress={() => navigation.navigate('Categories')}
-          >
-            <View style={[styles.dataIcon, { backgroundColor: `${COLORS.primary}12` }]}>
-              <Ionicons name="grid" size={20} color={COLORS.primary} />
-            </View>
-            <Text style={[styles.dataLabel, { color: colors.textPrimary }]}>Categories</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.dataBlock, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}
-            onPress={() => navigation.navigate('Categories')}
-          >
-            <View style={[styles.dataIcon, { backgroundColor: `${COLORS.primary}12` }]}>
-              <Ionicons name="card" size={20} color={COLORS.primary} />
-            </View>
-            <Text style={[styles.dataLabel, { color: colors.textPrimary }]}>Payments</Text>
-          </TouchableOpacity>
-        </View>
+
+
 
         {/* ── Recent Transactions ────────────────── */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}>

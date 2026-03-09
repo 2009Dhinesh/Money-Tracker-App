@@ -43,6 +43,7 @@ export default function AddTransactionScreen({ navigation, route }) {
   const [selectedAccount, setSelectedAccount] = useState(existingTxn?.account?._id || null);
   const [selectedToAccount, setSelectedToAccount] = useState(existingTxn?.toAccount?._id || null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(existingTxn?.paymentMethod?._id || null);
+  const [selectedOtherPerson, setSelectedOtherPerson] = useState(existingTxn?.otherPersonId || null);
   const [isRecurring, setIsRecurring] = useState(existingTxn?.isRecurring || false);
   const [frequency, setFrequency] = useState(existingTxn?.frequency || 'monthly');
   const [date, setDate] = useState(
@@ -133,6 +134,7 @@ export default function AddTransactionScreen({ navigation, route }) {
           isRecurring,
           frequency: isRecurring ? frequency : 'none',
           date: new Date(date).toISOString(),
+          otherPersonId: selectedOtherPerson,
         };
 
         if (isEdit) {
@@ -195,17 +197,13 @@ export default function AddTransactionScreen({ navigation, route }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
 
       {/* ── Header ─────────────────────────────── */}
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={[styles.backBtn, { backgroundColor: colors.surfaceAlt }]}
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           {isEdit ? 'Edit Transaction' : 'Add Transaction'}
         </Text>
-        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -225,7 +223,11 @@ export default function AddTransactionScreen({ navigation, route }) {
                   ...SHADOWS.sm,
                 },
               ]}
-              onPress={() => { setType(t); setSelectedCategory(t === 'transfer' ? null : selectedCategory); }}
+              onPress={() => { 
+                setType(t); 
+                setSelectedCategory(t === 'transfer' ? null : selectedCategory); 
+                if (t === 'transfer') setSelectedOtherPerson(null);
+              }}
             >
               <Ionicons
                 name={t === 'expense' ? 'arrow-up' : t === 'income' ? 'arrow-down' : 'swap-horizontal'}
@@ -313,6 +315,39 @@ export default function AddTransactionScreen({ navigation, route }) {
           <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
         {errors.account && <Text style={styles.fieldError}>{errors.account}</Text>}
+
+        {/* ── Other Person Picker (If account has other persons) ── */}
+        {(() => {
+          const acc = accounts.find(a => a._id === selectedAccount);
+          if (acc && acc.otherPersons && acc.otherPersons.length > 0 && (type === 'income' || type === 'expense')) {
+            return (
+              <>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Link to Third Party (Optional)</Text>
+                <TouchableOpacity 
+                  style={[styles.selectionInput, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]} 
+                  onPress={() => setActiveModal('person')}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                    {(() => {
+                      const person = acc.otherPersons.find(p => p._id === selectedOtherPerson);
+                      if (!person) return <Text style={{ color: colors.textTertiary }}>Select Person...</Text>;
+                      return (
+                        <>
+                          <View style={[styles.selectionIconBg, { backgroundColor: `${COLORS.primary}15` }]}>
+                            <Ionicons name="person-outline" size={16} color={COLORS.primary} />
+                          </View>
+                          <Text style={[styles.selectionText, { color: colors.textPrimary }]}>{person.name}</Text>
+                        </>
+                      );
+                    })()}
+                  </View>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </>
+            );
+          }
+          return null;
+        })()}
 
         {/* ── To Account Picker (Transfer only) ── */}
         {type === 'transfer' && (
@@ -451,8 +486,9 @@ export default function AddTransactionScreen({ navigation, route }) {
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
                 {activeModal === 'account' ? 'Select Account' :
                  activeModal === 'toAccount' ? 'Select Destination Account' :
-                 activeModal === 'category' ? 'Select Category' :
-                 'Select Payment Method'}
+                  activeModal === 'category' ? 'Select Category' :
+                  activeModal === 'person' ? 'Select Person' :
+                  'Select Payment Method'}
               </Text>
               <TouchableOpacity onPress={() => setActiveModal(null)}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
@@ -521,6 +557,46 @@ export default function AddTransactionScreen({ navigation, route }) {
                     </TouchableOpacity>
                   );
                 })
+              ) : activeModal === 'person' ? (
+                (() => {
+                  const acc = accounts.find(a => a._id === selectedAccount);
+                  return (
+                    <>
+                      <TouchableOpacity 
+                        style={[styles.modalOption, !selectedOtherPerson && { backgroundColor: `${COLORS.primary}15` }]}
+                        onPress={() => {
+                          setSelectedOtherPerson(null);
+                          setActiveModal(null);
+                        }}
+                      >
+                        <View style={[styles.selectionIconBg, { backgroundColor: `${colors.border}15` }]}>
+                          <Ionicons name="close-outline" size={16} color={colors.textSecondary} />
+                        </View>
+                        <Text style={[styles.modalOptionText, { color: colors.textPrimary }]}>None (General)</Text>
+                        {!selectedOtherPerson && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                      </TouchableOpacity>
+                      {acc?.otherPersons?.map(person => {
+                        const isSelected = selectedOtherPerson === person._id;
+                        return (
+                          <TouchableOpacity 
+                            key={person._id} 
+                            style={[styles.modalOption, isSelected && { backgroundColor: `${COLORS.primary}15` }]}
+                            onPress={() => {
+                              setSelectedOtherPerson(person._id);
+                              setActiveModal(null);
+                            }}
+                          >
+                            <View style={[styles.selectionIconBg, { backgroundColor: `${COLORS.primary}15` }]}>
+                              <Ionicons name="person-outline" size={16} color={COLORS.primary} />
+                            </View>
+                            <Text style={[styles.modalOptionText, { color: colors.textPrimary }]}>{person.name}</Text>
+                            {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </>
+                  );
+                })()
               ) : null}
               <View style={{ height: SPACING.xl }} />
             </ScrollView>
@@ -554,14 +630,21 @@ export default function AddTransactionScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING.xl, 
+    paddingTop: 56, 
+    paddingBottom: SPACING.base, 
     borderBottomWidth: 1,
+    position: 'relative',
   },
   headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700' },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
+  menuIconWrap: {
+    position: 'absolute',
+    left: SPACING.xl,
+    bottom: SPACING.base,
+    padding: 2,
   },
   scroll: { padding: SPACING.xl },
   typeToggle: {

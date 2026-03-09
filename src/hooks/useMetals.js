@@ -15,7 +15,7 @@ export const useMetals = () => {
     setError(null);
     try {
       const res = await metalApi.getAssets(metalType);
-      setAssets(res.assets);
+      setAssets(res.assets || []);
       setSummary(res.summary);
       setPrices(res.prices);
       if (res.dailyChange) setDailyChange(res.dailyChange);
@@ -40,7 +40,7 @@ export const useMetals = () => {
   const fetchHistory = useCallback(async (days = 7, metalType) => {
     try {
       const res = await metalApi.getHistory(days, metalType);
-      setHistory(res);
+      setHistory(res || { gold: [], silver: [] });
       return res;
     } catch (err) {
       setError(err.message);

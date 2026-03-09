@@ -10,6 +10,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useMetals } from '../hooks/useMetals';
 import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
+import Button from '../components/Button';
+import EmptyState from '../components/EmptyState';
 
 const GOLD_COLOR = '#FFB020';
 const SILVER_COLOR = '#8E8E93';
@@ -152,7 +154,7 @@ export default function MetalsScreen({ navigation }) {
   const getChangeIcon = (dir) => dir === 'up' ? 'trending-up' : dir === 'down' ? 'trending-down' : 'remove';
   const getChangeArrow = (dir) => dir === 'up' ? '▲' : dir === 'down' ? '▼' : '—';
 
-  const filteredAssets = filterType ? assets.filter(a => a.metalType === filterType) : assets;
+  const filteredAssets = filterType ? (assets || []).filter(a => a.metalType === filterType) : (assets || []);
   const currentAssetTypes = mMetal === 'gold' ? ASSET_TYPES_GOLD : ASSET_TYPES_SILVER;
   const currentPurities = mMetal === 'gold' ? PURITIES_GOLD : PURITIES_SILVER;
   const accentColor = mMetal === 'gold' ? GOLD_COLOR : SILVER_COLOR;
@@ -169,12 +171,12 @@ export default function MetalsScreen({ navigation }) {
           <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>⚜️ Precious Metals</Text>
-        <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
-          <TouchableOpacity onPress={() => setShowCalcModal(true)} style={[styles.iconBtn, { backgroundColor: colors.surfaceAlt }]}>
-            <Ionicons name="calculator-outline" size={18} color={GOLD_COLOR} />
+        <View style={{ flexDirection: 'row', gap: SPACING.base }}>
+          <TouchableOpacity onPress={() => setShowCalcModal(true)} style={styles.iconBtn}>
+            <Ionicons name="calculator-outline" size={24} color={GOLD_COLOR} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => openAddModal()} style={[styles.iconBtn, { backgroundColor: GOLD_COLOR }]}>
-            <Ionicons name="add" size={20} color="#fff" />
+          <TouchableOpacity onPress={() => openAddModal()} style={styles.iconBtn}>
+            <Ionicons name="add" size={28} color={GOLD_COLOR} />
           </TouchableOpacity>
         </View>
       </View>
@@ -349,7 +351,7 @@ export default function MetalsScreen({ navigation }) {
             <View style={styles.chartContainer}>
               <LineChart
                 data={{
-                  labels: (historyRange === 7 ? goldTrend : goldTrend.filter((_, i) => i % 5 === 0))
+                  labels: (historyRange === 7 ? goldTrend : (goldTrend || []).filter((_, i) => i % 5 === 0))
                     .map(h => h.date.split('-').slice(1).reverse().join('/')),
                   datasets: [
                     {
@@ -423,30 +425,26 @@ export default function MetalsScreen({ navigation }) {
               onPress={() => setFilterType(f.value)}>
               <Text style={{ fontSize: 12 }}>{f.icon}</Text>
               <Text style={{ fontSize: FONT_SIZES.sm, fontWeight: '600', color: filterType === f.value ? colors.textPrimary : colors.textSecondary }}>
-                {f.label} ({f.value === '' ? assets.length : assets.filter(a => a.metalType === f.value).length})
+                {f.label} ({f.value === '' ? (assets || []).length : (assets || []).filter(a => a.metalType === f.value).length})
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {filteredAssets.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={{ fontSize: 48 }}>⚜️</Text>
-            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No holdings yet</Text>
-            <Text style={{ color: colors.textTertiary, fontSize: FONT_SIZES.sm, textAlign: 'center' }}>
-              Tap + to add gold or silver
-            </Text>
-            <View style={{ flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.xl }}>
-              <TouchableOpacity style={[styles.addQuickBtn, { backgroundColor: `${GOLD_COLOR}15`, borderColor: GOLD_COLOR }]} onPress={() => openAddModal('gold')}>
-                <Text style={{ fontSize: 20 }}>🪙</Text>
-                <Text style={{ color: GOLD_COLOR, fontWeight: '700', fontSize: FONT_SIZES.sm }}>Add Gold</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.addQuickBtn, { backgroundColor: `${SILVER_COLOR}15`, borderColor: SILVER_COLOR }]} onPress={() => openAddModal('silver')}>
-                <Text style={{ fontSize: 20 }}>🥈</Text>
-                <Text style={{ color: SILVER_COLOR, fontWeight: '700', fontSize: FONT_SIZES.sm }}>Add Silver</Text>
-              </TouchableOpacity>
+          <EmptyState
+            icon="diamond-outline"
+            title="No holdings yet"
+            subtitle="Tap + to add gold or silver"
+          >
+            <View style={{ flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.base }}>
+              <Button 
+                title="+ Set First Gold or silver" 
+                onPress={() => openAddModal('gold')}
+                style={{ flex: 1 }}
+              />
             </View>
-          </View>
+          </EmptyState>
         ) : (
           filteredAssets.map(asset => {
             const isGold = asset.metalType === 'gold';

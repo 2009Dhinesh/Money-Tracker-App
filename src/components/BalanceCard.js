@@ -8,13 +8,19 @@ import { COLORS, RADIUS, SPACING, FONT_SIZES, SHADOWS } from '../constants/theme
 
 const { width } = Dimensions.get('window');
 
-const BalanceCard = ({ balance, income, expense, month }) => {
-  const { colors } = useTheme();
+const BalanceCard = ({ balance, income, expense, month, otherPersonsTotal = 0, incomeCount = 0, expenseCount = 0 }) => {
+  const { colors, isDark } = useTheme();
   const savingsRate = income > 0 ? Math.round(((income - expense) / income) * 100) : 0;
+  
+  const myBalance = balance - otherPersonsTotal;
+
+  const gradientColors = isDark
+    ? ['#1A1044', '#3D2B8E', '#6C63FF']
+    : ['#4338CA', '#6C63FF', '#8B5CF6'];
 
   return (
     <LinearGradient
-      colors={['#1A1044', '#3D2B8E', '#6C63FF']}
+      colors={gradientColors}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.card, SHADOWS.lg]}
@@ -24,17 +30,41 @@ const BalanceCard = ({ balance, income, expense, month }) => {
       <View style={styles.circle2} />
 
       {/* Month label */}
-      <Text style={styles.monthLabel}>{month || 'This Month'}</Text>
+      <View style={styles.topRow}>
+        <Text style={styles.monthLabel}>{month || 'This Month'}</Text>
+        {otherPersonsTotal > 0 && (
+          <View style={styles.otherIndicator}>
+            <Text style={styles.otherIndicatorText}>Incl. Third-Party</Text>
+          </View>
+        )}
+      </View>
 
       {/* Balance */}
-      <Text style={styles.balanceLabel}>Total Balance</Text>
-      <Text
-        style={styles.balance}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {formatFullNumber(balance)}
-      </Text>
+      <View style={styles.balanceContainer}>
+        <View style={{ flex: 1.2 }}>
+          <Text style={styles.balanceLabel}>Total Balance</Text>
+          <Text
+            style={styles.balance}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {formatFullNumber(balance)}
+          </Text>
+        </View>
+
+        {otherPersonsTotal > 0 && (
+          <View style={styles.breakdownContainer}>
+            <View style={styles.breakdownItem}>
+              <Text style={styles.breakdownLabel}>My Balance</Text>
+              <Text style={styles.breakdownValue}>{formatCurrencyShort(myBalance)}</Text>
+            </View>
+            <View style={styles.breakdownItem}>
+              <Text style={styles.breakdownLabel}>Others</Text>
+              <Text style={[styles.breakdownValue, { color: '#FFD700' }]}>{formatCurrencyShort(otherPersonsTotal)}</Text>
+            </View>
+          </View>
+        )}
+      </View>
 
       {/* Savings Rate */}
       {savingsRate > 0 && (
@@ -58,6 +88,9 @@ const BalanceCard = ({ balance, income, expense, month }) => {
             <Text style={[styles.statValue, { color: COLORS.income }]}>
               {formatFullNumber(income)}
             </Text>
+            {incomeCount > 0 && (
+              <Text style={styles.statCount}>{incomeCount} transactions</Text>
+            )}
           </View>
         </View>
 
@@ -72,6 +105,9 @@ const BalanceCard = ({ balance, income, expense, month }) => {
             <Text style={[styles.statValue, { color: COLORS.expense }]}>
               {formatFullNumber(expense)}
             </Text>
+            {expenseCount > 0 && (
+              <Text style={styles.statCount}>{expenseCount} transactions</Text>
+            )}
           </View>
         </View>
       </View>
@@ -167,12 +203,26 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
   },
+  statCount: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '500',
+    marginTop: 1,
+  },
   separator: {
     width: 1,
     height: 44,
     backgroundColor: 'rgba(255,255,255,0.15)',
     marginHorizontal: SPACING.base,
   },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.xs },
+  otherIndicator: { backgroundColor: 'rgba(255,215,0,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  otherIndicatorText: { color: '#FFD700', fontSize: 8, fontWeight: '800', textTransform: 'uppercase' },
+  balanceContainer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  breakdownContainer: { flex: 0.8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: RADIUS.md, padding: 8, gap: 4 },
+  breakdownItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  breakdownLabel: { fontSize: 8, color: 'rgba(255,255,255,0.5)', fontWeight: '600', textTransform: 'uppercase' },
+  breakdownValue: { fontSize: 12, color: '#FFF', fontWeight: '700' },
 });
 
 export default BalanceCard;
