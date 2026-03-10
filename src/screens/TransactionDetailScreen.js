@@ -179,6 +179,25 @@ export default function TransactionDetailScreen({ navigation, route }) {
                   subValue={pm.type}
                 />
               )}
+              {transaction.autoReplenishments && transaction.autoReplenishments.length > 0 && transaction.autoReplenishments.map((rep, idx) => (
+                <DetailRow
+                  key={`rep-${idx}`}
+                  icon="arrow-undo-outline"
+                  label={`Auto-Paid to ${rep.personName}`}
+                  value={formatCurrency(rep.amount)}
+                  color={COLORS.warning}
+                />
+              ))}
+              {transaction.autoReplenishments && transaction.autoReplenishments.length > 0 && (
+                <DetailRow
+                  icon="wallet-outline"
+                  label="Added to My Balance"
+                  value={formatCurrency(
+                    transaction.amount - transaction.autoReplenishments.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
+                  )}
+                  color={COLORS.primary}
+                />
+              )}
               {(() => {
                 const person = transaction.account?.otherPersons?.find(
                   p => p._id?.toString() === transaction.otherPersonId?.toString()

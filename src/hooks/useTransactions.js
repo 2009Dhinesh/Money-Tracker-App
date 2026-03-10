@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import transactionApi from '../api/transactionApi';
+import { sendInstantNotification } from '../utils/notificationService';
 
 export const useTransactions = () => {
   const [transactions, setTransactions] = useState([]);
@@ -51,7 +52,21 @@ export const useTransactions = () => {
 
   const addTransaction = useCallback(async (data) => {
     const res = await transactionApi.create(data);
-    return res.transaction;
+    
+    // Trigger Push Notification for Important Events
+    if (data.type === 'expense' && data.amount > 10000) {
+      sendInstantNotification(
+        'Large Expense Recorded! 📉',
+        `You just spent ₹${data.amount.toLocaleString()} on ${data.title || 'something'}.`
+      );
+    } else if (data.type === 'income' && data.amount > 5000) {
+      sendInstantNotification(
+        'Income Received! 💰',
+        `₹${data.amount.toLocaleString()} was added to your account.`
+      );
+    }
+
+    return res; // Return full data object (axios interceptor already returns res.data)
   }, []);
 
   const editTransaction = useCallback(async (id, data) => {

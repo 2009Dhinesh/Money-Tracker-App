@@ -36,6 +36,7 @@ import LandScreen from '../screens/LandScreen';
 import WealthDashboardScreen from '../screens/WealthDashboardScreen';
 import GoalsScreen from '../screens/GoalsScreen';
 import InvestmentsScreen from '../screens/InvestmentsScreen';
+import InvestmentDetailScreen from '../screens/InvestmentDetailScreen';
 import BiometricGuard from '../components/BiometricGuard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import GlassStatusBar from '../components/GlassStatusBar';
@@ -70,6 +71,7 @@ const attachCommonScreens = (StackNav) => (
     <StackNav.Screen name="Export" component={ExportScreen} options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
     <StackNav.Screen name="Goals" component={GoalsScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="Investments" component={InvestmentsScreen} options={{ animation: 'slide_from_right' }} />
+    <StackNav.Screen name="InvestmentDetail" component={InvestmentDetailScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="Analysis" component={ReportsScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="Categories" component={CategoriesScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="AccountDetail" component={AccountDetailScreen} options={{ animation: 'slide_from_right' }} />

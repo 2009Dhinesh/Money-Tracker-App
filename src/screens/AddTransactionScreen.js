@@ -99,8 +99,46 @@ export default function AddTransactionScreen({ navigation, route }) {
   const handleSave = async () => {
     if (!validate()) return;
 
+    const acc = accounts.find(a => a._id === selectedAccount);
+
+    // If it's an expense from an account with other people's money,
+    // and no specific person has been selected yet, ASK the user conditionally.
+    if (type === 'expense' && acc?.otherPersons?.length > 0 && !selectedOtherPerson) {
+      // Calculate how much money belongs to the user
+      const otherPersonsTotal = acc.otherPersons.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      const userBalance = acc.balance - otherPersonsTotal;
+      const expenseAmount = parseFloat(amount);
+
+      // Only prompt if the expense exceeds the user's own funds
+      if (expenseAmount > userBalance) {
+        Alert.alert(
+          '👤 Third-Party Funds Needed',
+          `Your expense (₹${expenseAmount}) exceeds your available personal balance (₹${Math.max(0, userBalance)}). Do you want to use funds from someone else in this account?`,
+          [
+            { 
+              text: 'Select Person', 
+              onPress: () => setActiveModal('person') 
+            },
+            { 
+              text: 'My Own Expense', 
+              onPress: () => proceedSave() 
+            },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+        return;
+      }
+    }
+
+    await proceedSave();
+  };
+
+  const proceedSave = async () => {
+    // Note: validation already done in handleSave
+
     const amountVal = parseFloat(amount);
     let willExceedBudget = false;
+    let willHitWarning = false;
     let budgetWarningMsg = '';
 
     if (type === 'expense') {
@@ -109,10 +147,13 @@ export default function AddTransactionScreen({ navigation, route }) {
         // If editing, subtract old amount from spent
         const oldAmount = isEdit && existingTxn?.amount ? parseFloat(existingTxn.amount) : 0;
         const newTotalSpent = budget.spent - oldAmount + amountVal;
+        const thresholdLimit = budget.amount * 0.9;
         
         if (newTotalSpent > budget.amount) {
           willExceedBudget = true;
           budgetWarningMsg = `Adding this expense will exceed your monthly limit of ₹${budget.amount} for ${budget.category?.name}.\n\nDo you want to proceed?`;
+        } else if (newTotalSpent >= thresholdLimit && budget.spent < thresholdLimit) {
+          willHitWarning = true;
         }
       }
     }
@@ -137,17 +178,39 @@ export default function AddTransactionScreen({ navigation, route }) {
           otherPersonId: selectedOtherPerson,
         };
 
+        console.log('[AddTransaction] Data sending:', JSON.stringify(data));
+
         if (isEdit) {
           await editTransaction(existingTxn._id, data);
           Alert.alert('✅ Success', 'Transaction updated successfully');
         } else {
-          const txn = await addTransaction(data);
+          const res = await addTransaction(data);
+          console.log('[AddTransaction] Response:', JSON.stringify(res));
           
+          // Handle Account Budget Alert from Server
+          if (res.budgetMessage) {
+            sendInstantNotification(
+              '⚠️ Account Limit Alert!',
+              res.budgetMessage.message
+            );
+            // Show Alert immediately
+            Alert.alert('Limit Alert ⚠️', res.budgetMessage.message, [
+              { text: 'OK', onPress: () => navigation.goBack() }
+            ]);
+            return; // EXIT EARLY so we don't show the generic success or goBack twice
+          }
+
           if (willExceedBudget) {
             const budget = budgets.find(b => b.category?._id === selectedCategory);
             sendInstantNotification(
               '⚠️ Budget Exceeded!', 
               `You've just exceeded your ${budget.category?.name} budget limit of ₹${budget.amount}.`
+            );
+          } else if (willHitWarning && !res.budgetMessage) { // Only show if account alert haven't shown
+            const budget = budgets.find(b => b.category?._id === selectedCategory);
+            sendInstantNotification(
+              '⚠️ Budget Warning!', 
+              `You have used over 90% of your ₹${budget.amount} limit for ${budget.category?.name}.`
             );
           }
 

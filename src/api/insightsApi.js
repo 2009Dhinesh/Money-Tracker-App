@@ -1,9 +1,9 @@
 import api from './axios';
 
 const insightsApi = {
-  getInsights: async () => {
-    const response = await api.get('/api/insights');
-    return response.data;
+  getInsights: async (params) => {
+    const response = await api.get('/api/insights', { params });
+    return response;
   },
 };
 

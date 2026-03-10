@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAppDrawer } from '../context/DrawerContext';
 import wealthApi from '../api/wealthApi';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const WIDTH = Dimensions.get('window').width;
 
@@ -48,6 +49,8 @@ export default function WealthDashboardScreen({ navigation }) {
     if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
     return `₹${n.toLocaleString()}`;
   };
+
+  if (loading && !refreshing) return <LoadingSpinner message="Loading wealth dashboard..." />;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

@@ -1,8 +1,9 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, StatusBar, Dimensions, Image
+  RefreshControl, StatusBar, Dimensions, Image, Modal, Alert
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { PieChart } from 'react-native-chart-kit';
@@ -11,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { useBudgets } from '../hooks/useBudgets';
 import { useDebts } from '../hooks/useDebts';
+import { useCategories } from '../hooks/useCategories';
 import { sendInstantNotification } from '../utils/notificationService';
 import BalanceCard from '../components/BalanceCard';
 import TransactionItem from '../components/TransactionItem';
@@ -19,6 +21,8 @@ import EmptyState from '../components/EmptyState';
 import NotificationPermissionModal from '../components/NotificationPermissionModal';
 import InsightSection from '../components/InsightSection';
 import WelcomeBriefing from '../components/WelcomeBriefing';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { storage } from '../utils/storage';
 import { requestNotificationPermissions, checkPermissionStatus } from '../utils/notificationService';
@@ -32,9 +36,10 @@ const SCREEN_PAD = SPACING.xl;
 export default function DashboardScreen({ navigation }) {
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
-  const { summary, fetchSummary, loading } = useTransactions();
+  const { summary, fetchSummary, loading, addTransaction } = useTransactions();
   const { alertBudgets, fetchBudgets } = useBudgets();
   const { fetchDebts } = useDebts();
+  const { categories, fetchCategories } = useCategories();
   const { openDrawer } = useAppDrawer();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -43,16 +48,46 @@ export default function DashboardScreen({ navigation }) {
   const year = now.getFullYear();
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [showBriefing, setShowBriefing] = useState(false);
+  const [incomeReminderVisible, setIncomeReminderVisible] = useState(false);
+  const [currentReminderIncome, setCurrentReminderIncome] = useState(null);
+  const [reminderAmount, setReminderAmount] = useState('');
+  const [showBudgetAlert, setShowBudgetAlert] = useState(false);
 
   const load = useCallback(async () => {
     await Promise.all([
       fetchSummary({ month, year }),
       fetchBudgets({ month, year }),
       fetchDebts(), // This will trigger the notification sync
+      fetchCategories(),
     ]);
-  }, [month, year, fetchDebts]);
+  }, [month, year, fetchDebts, fetchSummary, fetchBudgets, fetchCategories]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  useEffect(() => {
+    const checkExpectedIncomes = async () => {
+      if (!user?.expectedIncomes || user.expectedIncomes.length === 0) return;
+      
+      const today = new Date();
+      const todayDay = today.getDate();
+      
+      const dueIncomes = user.expectedIncomes.filter(inc => inc.expectedDate === todayDay);
+      if (dueIncomes.length === 0) return;
+      
+      for (const income of dueIncomes) {
+        const cacheKey = `income_prompt_${user._id}_${income._id}_${today.toDateString()}`;
+        const hasPrompted = await AsyncStorage.getItem(cacheKey);
+        
+        if (!hasPrompted) {
+          setCurrentReminderIncome(income);
+          setReminderAmount(income.amount.toString());
+          setTimeout(() => setIncomeReminderVisible(true), 1500);
+          break; // Show one at a time
+        }
+      }
+    };
+    if (user) checkExpectedIncomes();
+  }, [user]);
 
   useEffect(() => {
     const checkNotif = async () => {
@@ -79,6 +114,34 @@ export default function DashboardScreen({ navigation }) {
     };
     if (user) checkBriefing();
   }, [user]);
+
+  useEffect(() => {
+    // Show budget alert popup once per session if there are alerts
+    if (alertBudgets.length > 0) {
+      const checkBudgetAlert = async () => {
+        const today = new Date().toDateString();
+        const lastShown = await AsyncStorage.getItem(`budget_alert_${today}`);
+        if (!lastShown) {
+           setTimeout(() => setShowBudgetAlert(true), 2000); // Show shortly after briefing
+        }
+      };
+      checkBudgetAlert();
+    }
+  }, [alertBudgets]);
+
+  useEffect(() => {
+    // Show budget alert popup once per session if there are alerts
+    if (alertBudgets.length > 0) {
+      const checkBudgetAlert = async () => {
+        const today = new Date().toDateString();
+        const lastShown = await AsyncStorage.getItem(`budget_alert_${today}`);
+        if (!lastShown) {
+           setTimeout(() => setShowBudgetAlert(true), 2000); // Show shortly after briefing
+        }
+      };
+      checkBudgetAlert();
+    }
+  }, [alertBudgets]);
 
   const handleAllowNotif = async () => {
     const status = await requestNotificationPermissions();
@@ -151,8 +214,11 @@ export default function DashboardScreen({ navigation }) {
             style={[styles.notifBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => navigation.navigate('Profile')}
           >
-            <Ionicons name="person-outline" size={20} color={colors.textPrimary} />
-            {alertBudgets.length > 0 && <View style={styles.badge} />}
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={{ width: 42, height: 42, borderRadius: 21 }} />
+            ) : (
+              <Ionicons name="person-outline" size={20} color={colors.textPrimary} />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -169,6 +235,21 @@ export default function DashboardScreen({ navigation }) {
 
         <InsightSection />
 
+        {/* ── Budget Alerts ──────────────────────── */}
+        {alertBudgets.length > 0 && (
+          <TouchableOpacity
+            style={[styles.alertCard, { backgroundColor: isDark ? 'rgba(255,176,32,0.12)' : COLORS.warningLight, borderColor: COLORS.warning }]}
+            onPress={() => navigation.navigate('Budgets')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="warning" size={18} color={COLORS.warning} />
+            <Text style={[styles.alertText, { color: COLORS.warning }]}>
+              {alertBudgets.length} budget{alertBudgets.length > 1 ? 's' : ''} near or over limit!
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
+          </TouchableOpacity>
+        )}
+        
         {/* ── Accounts List ──────────────────────── */}
         <View style={styles.sectionTitleRow}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>My Accounts {summary?.accounts?.length > 0 ? `(${summary.accounts.length})` : ''}</Text>
@@ -235,21 +316,6 @@ export default function DashboardScreen({ navigation }) {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        {/* ── Budget Alerts ──────────────────────── */}
-        {alertBudgets.length > 0 && (
-          <TouchableOpacity
-            style={[styles.alertCard, { backgroundColor: isDark ? 'rgba(255,176,32,0.12)' : COLORS.warningLight, borderColor: COLORS.warning }]}
-            onPress={() => navigation.navigate('Budgets')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="warning" size={18} color={COLORS.warning} />
-            <Text style={[styles.alertText, { color: COLORS.warning }]}>
-              {alertBudgets.length} budget{alertBudgets.length > 1 ? 's' : ''} near or over limit!
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
-          </TouchableOpacity>
-        )}
 
         {/* ── Quick Actions ──────────────────────── */}
         <View style={styles.quickActions}>
@@ -344,6 +410,75 @@ export default function DashboardScreen({ navigation }) {
         onClose={handleCloseNotif}
       />
 
+      {/* Expected Income Reminder Modal */}
+      <Modal visible={incomeReminderVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Income Reminder</Text>
+              <TouchableOpacity onPress={async () => {
+                const today = new Date().toDateString();
+                const cacheKey = `income_prompt_${user._id}_${currentReminderIncome?._id}_${today}`;
+                await AsyncStorage.setItem(cacheKey, 'dismissed');
+                setIncomeReminderVisible(false);
+              }}>
+                <Ionicons name="close" size={24} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ marginBottom: SPACING.lg }}>
+              <Text style={{ fontSize: FONT_SIZES.base, color: colors.textSecondary, lineHeight: 22 }}>
+                Today is your expected <Text style={{ fontWeight: 'bold', color: colors.textPrimary }}>{currentReminderIncome?.incomeType === 'Other' ? currentReminderIncome?.customIncomeType : currentReminderIncome?.incomeType}</Text> date. 
+                Your expected income is <Text style={{ fontWeight: 'bold', color: COLORS.income }}>₹{currentReminderIncome?.amount?.toLocaleString()}</Text>. 
+                Please confirm or adjust the amount received to add it to your transactions.
+              </Text>
+            </View>
+            <Input
+              label="Amount Received (₹)"
+              value={reminderAmount}
+              onChangeText={setReminderAmount}
+              keyboardType="numeric"
+              icon="cash-outline"
+            />
+            <Button
+              title="Confirm & Add Income"
+              onPress={async () => {
+                const amountVal = parseFloat(reminderAmount);
+                if (isNaN(amountVal) || amountVal <= 0) {
+                  return Alert.alert('Invalid', 'Please enter a valid amount.');
+                }
+                try {
+                  const incomeName = currentReminderIncome?.incomeType === 'Other' ? currentReminderIncome?.customIncomeType : currentReminderIncome?.incomeType;
+                  let targetCat = categories.find(c => c.type === 'income' && c.name.toLowerCase() === incomeName.toLowerCase());
+                  if (!targetCat) {
+                     targetCat = categories.find(c => c.type === 'income');
+                  }
+                  
+                  await addTransaction({
+                    type: 'income',
+                    amount: amountVal,
+                    title: `${incomeName} Received`,
+                    description: 'Automatically logged from expected income reminder',
+                    category: targetCat?._id,
+                    account: currentReminderIncome?.accountId,
+                    date: new Date().toISOString()
+                  });
+                  
+                  const today = new Date().toDateString();
+                  const cacheKey = `income_prompt_${user._id}_${currentReminderIncome?._id}_${today}`;
+                  await AsyncStorage.setItem(cacheKey, 'completed');
+                  
+                  setIncomeReminderVisible(false);
+                  Alert.alert('✅ Success', 'Income added to your account!');
+                  load(); // Refresh summary dashboard
+                } catch (err) {
+                  Alert.alert('Error', err.message || 'Failed to add income.');
+                }
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -407,16 +542,12 @@ const getGreeting = () => {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { padding: SCREEN_PAD, paddingTop: 56 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: SPACING.xl },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.xl },
   greeting: { fontSize: FONT_SIZES.sm, fontWeight: '500', marginBottom: 2 },
   name: { fontSize: FONT_SIZES['3xl'], fontWeight: '800', letterSpacing: -0.5 },
   notifBtn: {
     width: 44, height: 44, borderRadius: 22,
     borderWidth: 1, alignItems: 'center', justifyContent: 'center', position: 'relative',
-  },
-  badge: {
-    position: 'absolute', top: 8, right: 8,
-    width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.expense,
   },
   alertCard: {
     flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
@@ -462,4 +593,17 @@ const styles = StyleSheet.create({
   logoImageSmall: { width: 24, height: 24 },
   accIcon: { fontSize: 18 },
   accName: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: RADIUS['2xl'], borderTopRightRadius: RADIUS['2xl'],
+    padding: SPACING.xl, paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  modalTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
 });

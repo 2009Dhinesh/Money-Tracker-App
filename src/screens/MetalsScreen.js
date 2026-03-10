@@ -12,6 +12,7 @@ import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const GOLD_COLOR = '#FFB020';
 const SILVER_COLOR = '#8E8E93';
@@ -94,6 +95,8 @@ export default function MetalsScreen({ navigation }) {
     if (metal) { setMMetal(metal); setMPurity(metal === 'gold' ? '22K' : '999'); }
     setShowAddModal(true);
   };
+
+  if (loading && !refreshing && assets.length === 0) return <LoadingSpinner message="Loading metals..." />;
 
   const openEditModal = (asset) => {
     setEditingId(asset._id);

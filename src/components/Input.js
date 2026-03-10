@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { View, TextInput, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TextInput, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { COLORS, RADIUS, SPACING, FONT_SIZES } from '../constants/theme';
@@ -130,15 +130,23 @@ const styles = StyleSheet.create({
   },
   leftIcon: {
     marginRight: SPACING.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   rightIcon: {
     marginLeft: SPACING.sm,
     padding: SPACING.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
+    flex: 1,
     fontSize: FONT_SIZES.base,
     fontWeight: '400',
-    paddingVertical: SPACING.md,
+    paddingVertical: Platform.OS === 'ios' ? SPACING.md : SPACING.sm,
+    paddingHorizontal: 0,
+    margin: 0,
+    textAlignVertical: 'center',
   },
   errorRow: {
     flexDirection: 'row',

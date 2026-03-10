@@ -23,7 +23,7 @@ export const useGoals = () => {
     try {
       const res = await goalApi.createGoal(data);
       setGoals(prev => [res.goal, ...prev]);
-      return res.goal;
+      return res;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -55,7 +55,7 @@ export const useGoals = () => {
     try {
       const res = await goalApi.addFunds(id, amount, accountId, paymentMethodId);
       setGoals(prev => prev.map(g => g._id === id ? res.goal : g));
-      return res.goal;
+      return res;
     } catch (err) {
       setError(err.message);
       throw err;

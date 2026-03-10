@@ -12,6 +12,7 @@ import EmptyState from '../components/EmptyState';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
 import { useAppDrawer } from '../context/DrawerContext';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const ACCOUNT_TYPES = [
   { label: 'Cash', value: 'cash', icon: '💵' },
@@ -39,6 +40,7 @@ export default function AccountsScreen({ navigation }) {
   const [balance, setBalance] = useState('0');
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
   const [selectedIcon, setSelectedIcon] = useState('💵');
+  const [monthlyLimit, setMonthlyLimit] = useState('0');
 
   const [showTypeInput, setShowTypeInput] = useState(false);
   const [customType, setCustomType] = useState('');
@@ -58,6 +60,7 @@ export default function AccountsScreen({ navigation }) {
     setBalance('0');
     setSelectedColor(PRESET_COLORS[0]);
     setSelectedIcon('💵');
+    setMonthlyLimit('0');
     setIsEdit(false);
     setCurrentId(null);
     setShowTypeInput(false);
@@ -72,6 +75,9 @@ export default function AccountsScreen({ navigation }) {
     setModalVisible(true);
   };
 
+  if (loading && accounts.length === 0) return <LoadingSpinner message="Loading accounts..." />;
+
+  const isAccountsEmpty = accounts.length === 0;
   const handleOpenEdit = (acc) => {
     setName(acc.name);
     setType(acc.type);
@@ -80,6 +86,7 @@ export default function AccountsScreen({ navigation }) {
     setBalance(acc.balance.toString());
     setSelectedColor(acc.color);
     setSelectedIcon(acc.icon);
+    setMonthlyLimit(acc.monthlyLimit?.toString() || '0');
     setIsEdit(true);
     setCurrentId(acc._id);
     setOtherPersons(acc.otherPersons || []);
@@ -129,6 +136,7 @@ export default function AccountsScreen({ navigation }) {
           balance: parseFloat(balance),
           color: selectedColor,
           icon: selectedIcon,
+          monthlyLimit: parseFloat(monthlyLimit) || 0,
           otherPersons: otherPersons.filter(p => p.name.trim() && !isNaN(parseFloat(p.amount))).map(p => ({
             name: p.name.trim(),
             amount: parseFloat(p.amount)
@@ -218,6 +226,11 @@ export default function AccountsScreen({ navigation }) {
                 <Text style={[styles.type, { color: colors.textSecondary }]}>
                   {acc.type.toUpperCase()}{acc.bankName ? ` • ${acc.bankName}` : ''}
                 </Text>
+                {acc.monthlyLimit > 0 && (
+                  <Text style={{ fontSize: 11, color: COLORS.expense, fontWeight: '700', marginTop: 2 }}>
+                    Limit: ₹{acc.monthlyLimit.toLocaleString()}
+                  </Text>
+                )}
               </View>
               <View style={styles.cardBalance}>
                 <Text style={[styles.balanceNum, { color: colors.textPrimary }]}>₹{acc.balance.toLocaleString()}</Text>
@@ -264,6 +277,15 @@ export default function AccountsScreen({ navigation }) {
                 keyboardType="numeric"
                 value={balance}
                 onChangeText={setBalance}
+              />
+
+              <Input
+                label="Monthly Spending Limit"
+                placeholder="e.g. 50000 (0 for no limit)"
+                keyboardType="numeric"
+                value={monthlyLimit}
+                onChangeText={setMonthlyLimit}
+                icon="notifications-outline"
               />
 
               <Text style={[styles.label, { color: colors.textSecondary }]}>Account Type</Text>

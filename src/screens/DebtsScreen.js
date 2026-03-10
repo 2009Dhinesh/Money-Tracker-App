@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal,
   StatusBar, Alert, TextInput, RefreshControl, Image,
@@ -14,6 +14,7 @@ import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme
 import { BANK_LIST } from '../constants/banks';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const STATUS_CONFIG = {
   pending: { label: 'Pending', color: COLORS.warning, bg: COLORS.warningLight, icon: 'time-outline' },
@@ -51,6 +52,10 @@ export default function DebtsScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
 
+  // Filter Modal
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterModalType, setFilterModalType] = useState('status'); // 'status' | 'contact'
+
   // Contact Modal
   const [showContactModal, setShowContactModal] = useState(false);
   const [editingContactId, setEditingContactId] = useState(null);
@@ -59,6 +64,9 @@ export default function DebtsScreen({ navigation }) {
   const [cRelation, setCRelation] = useState('friend');
   const [cNote, setCNote] = useState('');
   const [cIcon, setCIcon] = useState('👤');
+
+  // Filter Search
+  const [filterSearch, setFilterSearch] = useState('');
 
   // Repayment Modal
   const [showRepayModal, setShowRepayModal] = useState(false);
@@ -81,6 +89,11 @@ export default function DebtsScreen({ navigation }) {
 
   useFocusEffect(useCallback(() => { loadAll(); }, [loadAll]));
 
+  // Re-fetch when filters change while screen is focused
+  useEffect(() => {
+    if (!refreshing) loadAll();
+  }, [statusFilter, contactFilter]);
+
   const onRefresh = async () => { setRefreshing(true); await loadAll(); setRefreshing(false); };
 
   const filteredDebts = (debts || []).filter(d => d.type === activeTab);
@@ -100,6 +113,8 @@ export default function DebtsScreen({ navigation }) {
     setCName(c.name); setCPhone(c.phone || ''); setCRelation(c.relation || 'friend'); setCNote(c.note || ''); setCIcon(c.icon || '👤');
     setShowContactModal(true);
   };
+
+  if (loading && !refreshing && debts.length === 0) return <LoadingSpinner message="Loading debts..." />;
 
   // ── Contact Modal Save ──
   const handleSaveContact = async () => {
@@ -230,30 +245,33 @@ export default function DebtsScreen({ navigation }) {
         </View>
 
         {/* Filters */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: SPACING.base }}>
-          {['', 'pending', 'partial', 'completed'].map(s => (
-            <TouchableOpacity key={s} style={[styles.filterChip, { backgroundColor: statusFilter === s ? COLORS.primary : colors.surfaceAlt }]} onPress={() => setStatusFilter(s)}>
-              <Text style={{ fontSize: FONT_SIZES.sm, fontWeight: '600', color: statusFilter === s ? '#fff' : colors.textSecondary }}>
-                {s === '' ? 'All' : STATUS_CONFIG[s]?.label}
+        <View style={styles.filterRow}>
+          <TouchableOpacity 
+            style={[styles.filterDropdownBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]} 
+            onPress={() => { setFilterModalType('status'); setFilterModalVisible(true); }}
+          >
+            <Text style={[styles.filterDropdownText, { color: colors.textPrimary }]} numberOfLines={1}>
+              Status: <Text style={{ color: statusFilter === '' ? colors.textSecondary : COLORS.primary }}>
+                {statusFilter === '' ? 'All' : STATUS_CONFIG[statusFilter]?.label}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
 
-        {/* Contact Quick Filter */}
-        {contacts.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: SPACING.xl }}>
-            <TouchableOpacity style={[styles.filterChip, { backgroundColor: contactFilter === '' ? COLORS.primary : colors.surfaceAlt }]} onPress={() => setContactFilter('')}>
-              <Text style={{ fontSize: FONT_SIZES.sm, fontWeight: '600', color: contactFilter === '' ? '#fff' : colors.textSecondary }}>All People</Text>
+          {contacts.length > 0 && (
+            <TouchableOpacity 
+              style={[styles.filterDropdownBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]} 
+              onPress={() => { setFilterModalType('contact'); setFilterModalVisible(true); }}
+            >
+              <Text style={[styles.filterDropdownText, { color: colors.textPrimary }]} numberOfLines={1}>
+                People: <Text style={{ color: contactFilter === '' ? colors.textSecondary : COLORS.primary }}>
+                  {contactFilter === '' ? 'All' : contacts.find(c => c._id === contactFilter)?.name || 'All'}
+                </Text>
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
-            {contacts.map(c => (
-              <TouchableOpacity key={c._id} style={[styles.filterChip, { backgroundColor: contactFilter === c._id ? COLORS.primary : colors.surfaceAlt }]} onPress={() => setContactFilter(c._id)}>
-                <Text style={{ fontSize: 12 }}>{c.icon}</Text>
-                <Text style={{ fontSize: FONT_SIZES.sm, fontWeight: '600', color: contactFilter === c._id ? '#fff' : colors.textSecondary }}>{c.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+          )}
+        </View>
 
         {/* Overdue Alert */}
         {summary?.overdueDebts?.length > 0 && (
@@ -543,6 +561,74 @@ export default function DebtsScreen({ navigation }) {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Filter Modal */}
+      <Modal visible={filterModalVisible} animationType="slide" transparent>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setFilterModalVisible(false)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.modalBox, { backgroundColor: colors.surface, paddingBottom: 20 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {filterModalType === 'status' ? 'Select Status' : 'Select Contact'}
+              </Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
+              {filterModalType === 'status' ? (
+                ['', 'pending', 'partial', 'completed'].map(s => (
+                  <TouchableOpacity 
+                    key={s} 
+                    style={[styles.sheetOption, statusFilter === s && { backgroundColor: `${COLORS.primary}15` }, { borderBottomColor: colors.border }]}
+                    onPress={() => { setStatusFilter(s); setFilterModalVisible(false); }}
+                  >
+                    <Text style={[styles.sheetOptionText, { color: statusFilter === s ? COLORS.primary : colors.textPrimary }]}>
+                      {s === '' ? 'All Statuses' : STATUS_CONFIG[s]?.label}
+                    </Text>
+                    {statusFilter === s && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <>
+                  <View style={[styles.modalSearchContainer, { borderColor: colors.border }]}>
+                    <Ionicons name="search-outline" size={18} color={colors.textTertiary} />
+                    <TextInput 
+                      style={[styles.modalSearchInput, { color: colors.textPrimary }]} 
+                      placeholder="Search people..." 
+                      placeholderTextColor={colors.textTertiary} 
+                      value={filterSearch} 
+                      onChangeText={setFilterSearch} 
+                    />
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[styles.sheetOption, contactFilter === '' && { backgroundColor: `${COLORS.primary}15` }, { borderBottomColor: colors.border }]}
+                    onPress={() => { setContactFilter(''); setFilterModalVisible(false); setFilterSearch(''); }}
+                  >
+                    <Text style={[styles.sheetOptionText, { color: contactFilter === '' ? COLORS.primary : colors.textPrimary }]}>All Contacts</Text>
+                    {contactFilter === '' && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+                  </TouchableOpacity>
+                  {contacts.filter(c => c.name.toLowerCase().includes(filterSearch.toLowerCase())).map(c => (
+                    <TouchableOpacity 
+                      key={c._id} 
+                      style={[styles.sheetOption, contactFilter === c._id && { backgroundColor: `${COLORS.primary}15` }, { borderBottomColor: colors.border }]}
+                      onPress={() => { setContactFilter(c._id); setFilterModalVisible(false); setFilterSearch(''); }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 18 }}>{c.icon}</Text>
+                        <Text style={[styles.sheetOptionText, { color: contactFilter === c._id ? COLORS.primary : colors.textPrimary }]}>{c.name}</Text>
+                      </View>
+                      {contactFilter === c._id && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
     </View>
   );
 }
@@ -561,7 +647,11 @@ const styles = StyleSheet.create({
   summaryCard: { flex: 1, padding: SPACING.md, borderRadius: RADIUS.lg, borderWidth: 1 },
   summaryLabel: { fontSize: FONT_SIZES.xs, fontWeight: '600', marginBottom: 4 },
   summaryAmount: { fontSize: FONT_SIZES.md, fontWeight: '800' },
-  filterChip: { paddingHorizontal: SPACING.base, paddingVertical: SPACING.xs + 2, borderRadius: RADIUS.full, marginRight: SPACING.sm, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  filterRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.xl },
+  filterDropdownBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.md, paddingVertical: 12, borderRadius: RADIUS.lg, borderWidth: 1 },
+  filterDropdownText: { fontSize: FONT_SIZES.sm, fontWeight: '700' },
+  sheetOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: SPACING.md, paddingHorizontal: SPACING.md, borderBottomWidth: 1, borderRadius: RADIUS.md, marginBottom: 4 },
+  sheetOptionText: { fontSize: FONT_SIZES.base, fontWeight: '600' },
   alertBanner: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, borderRadius: RADIUS.md, marginBottom: SPACING.xl },
   debtCard: { borderRadius: RADIUS.lg, padding: SPACING.base, marginBottom: SPACING.md, borderWidth: 1 },
   debtTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
@@ -608,4 +698,6 @@ const styles = StyleSheet.create({
   accChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.full, borderWidth: 1, marginRight: SPACING.sm },
   repayInfo: { padding: SPACING.md, borderRadius: RADIUS.md, marginBottom: SPACING.md },
   saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: SPACING.md + 2, borderRadius: RADIUS.lg, marginTop: SPACING.md },
+  modalSearchContainer: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingHorizontal: SPACING.md, paddingVertical: SPACING.xs, borderRadius: RADIUS.lg, borderWidth: 1, marginBottom: SPACING.md, marginHorizontal: SPACING.sm },
+  modalSearchInput: { flex: 1, fontSize: FONT_SIZES.sm, paddingVertical: 8 },
 });
