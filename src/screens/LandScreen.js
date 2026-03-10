@@ -11,6 +11,7 @@ import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const PROPERTY_TYPES = [
   { label: 'Plot', value: 'plot', icon: '🏗️' },
@@ -94,6 +95,8 @@ export default function LandScreen({ navigation }) {
       { text: 'Delete', style: 'destructive', onPress: () => removeAsset(id) },
     ]);
   };
+
+  if (loading && !refreshing && assets.length === 0) return <LoadingSpinner message="Loading properties..." />;
 
   const appColor = (summary?.totalAppreciation || 0) >= 0 ? COLORS.income : COLORS.expense;
 

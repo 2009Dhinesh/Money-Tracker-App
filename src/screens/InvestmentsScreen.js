@@ -22,12 +22,13 @@ const TYPES = [
   { label: 'Bond', value: 'bond', icon: 'document-text' },
 ];
 
-export default function InvestmentsScreen() {
+export default function InvestmentsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { investments, loading, fetchInvestments, addInvestment, removeInvestment } = useInvestments();
   const { openDrawer } = useAppDrawer();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   
   // Form State
   const [name, setName] = useState('');
@@ -41,24 +42,52 @@ export default function InvestmentsScreen() {
     fetchInvestments();
   }, [fetchInvestments]);
 
+  useEffect(() => {
+    if (route?.params?.editInvestment) {
+      openFormModal(route.params.editInvestment);
+      navigation.setParams({ editInvestment: undefined });
+    }
+  }, [route?.params?.editInvestment]);
+
+  const openFormModal = (inv = null) => {
+    if (inv) {
+      setEditingId(inv._id);
+      setName(inv.name);
+      setSymbol(inv.symbol || '');
+      setType(inv.type);
+      setUnits(String(inv.units));
+      setBuyPrice(String(inv.buyPrice));
+      setCurrentPrice(inv.currentPrice ? String(inv.currentPrice) : '');
+    } else {
+      resetForm();
+    }
+    setModalVisible(true);
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchInvestments();
     setRefreshing(false);
   }, [fetchInvestments]);
 
-  const handleAdd = async () => {
+  const handleSave = async () => {
     if (!name || !units || !buyPrice) return Alert.alert('Error', 'Please fill all required fields');
     
     try {
-      await addInvestment({
+      const payload = {
         name,
         symbol,
         type,
         units: parseFloat(units),
         buyPrice: parseFloat(buyPrice),
         currentPrice: currentPrice ? parseFloat(currentPrice) : parseFloat(buyPrice),
-      });
+      };
+
+      if (editingId) {
+        await editInvestment(editingId, payload);
+      } else {
+        await addInvestment(payload);
+      }
       setModalVisible(false);
       resetForm();
     } catch (err) {
@@ -67,6 +96,7 @@ export default function InvestmentsScreen() {
   };
 
   const resetForm = () => {
+    setEditingId(null);
     setName('');
     setSymbol('');
     setType('stock');
@@ -84,36 +114,40 @@ export default function InvestmentsScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
       
-      <View style={[styles.header, { backgroundColor: COLORS.primary }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color="#fff" />
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={openDrawer} style={styles.backBtn}>
+          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         
-        <View style={{ alignItems: 'center' }}>
-          <Text style={styles.headerTitle}>Investments</Text>
-          <Text style={styles.headerTotal}>₹{totalValue.toLocaleString()}</Text>
-          <View style={styles.profitBadge}>
-            <Ionicons name={totalProfit >= 0 ? 'caret-up' : 'caret-down'} size={14} color="#fff" />
-            <Text style={styles.profitText}>
-              ₹{Math.abs(totalProfit).toLocaleString()} ({((totalProfit / (totalValue - totalProfit || 1)) * 100).toFixed(2)}%)
-            </Text>
-          </View>
-        </View>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Investments</Text>
 
-        <TouchableOpacity style={styles.headerRight} onPress={() => setModalVisible(true)}>
-          <Ionicons name="add" size={32} color="#fff" />
+        <TouchableOpacity style={styles.iconBtn} onPress={() => openFormModal(null)}>
+          <Ionicons name="add" size={20} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        showsVerticalScrollIndicator={false}
       >
+        <View style={[styles.summaryCard, { backgroundColor: COLORS.primary, borderColor: COLORS.primary }, SHADOWS.md]}>
+          <Text style={[styles.summaryLabel, { color: 'rgba(255,255,255,0.8)' }]}>Total Portfolio Value</Text>
+          <Text style={[styles.summaryTotal, { color: '#fff' }]}>₹{totalValue.toLocaleString()}</Text>
+          
+          <View style={[styles.summaryProfitBox, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+            <Ionicons name={totalProfit >= 0 ? 'caret-up' : 'caret-down'} size={14} color="#fff" />
+            <Text style={[styles.summaryProfitText, { color: '#fff' }]}>
+              {totalProfit >= 0 ? '+' : ''}₹{Math.abs(totalProfit).toLocaleString()} ({totalValue > 0 ? ((totalProfit / (totalValue - totalProfit || 1)) * 100).toFixed(2) : 0}%)
+            </Text>
+          </View>
+        </View>
         {investments.length > 0 ? (
           investments.map((inv) => (
             <TouchableOpacity 
               key={inv._id} 
               style={[styles.invCard, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}
+              onPress={() => navigation.navigate('InvestmentDetail', { investment: inv })}
               onLongPress={() => {
                 Alert.alert('Delete Investment', 'Are you sure?', [
                   { text: 'Cancel', style: 'cancel' },
@@ -159,7 +193,7 @@ export default function InvestmentsScreen() {
             title="No Investments Yet" 
             subtitle="Keep track of your stocks, crypto and more" 
           >
-            <Button title="+ Set First Investment" onPress={() => setModalVisible(true)} />
+            <Button title="+ Set First Investment" onPress={() => openFormModal(null)} />
           </EmptyState>
         )}
       </ScrollView>
@@ -169,7 +203,9 @@ export default function InvestmentsScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Add Investment</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {editingId ? 'Edit Investment' : 'Add Investment'}
+              </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color={colors.textTertiary} />
               </TouchableOpacity>
@@ -203,7 +239,7 @@ export default function InvestmentsScreen() {
 
               <Input label="Current Price (Optional)" value={currentPrice} onChangeText={setCurrentPrice} keyboardType="numeric" />
 
-              <Button title="Save Investment" onPress={handleAdd} style={{ marginTop: SPACING.md }} />
+              <Button title={editingId ? 'Update Investment' : 'Save Investment'} onPress={handleSave} style={{ marginTop: SPACING.md }} />
             </ScrollView>
           </View>
         </View>
@@ -214,42 +250,17 @@ export default function InvestmentsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: {
-    backgroundColor: COLORS.primary,
-    paddingTop: 56, 
-    paddingBottom: 30,
-    paddingHorizontal: SPACING.xl,
-    borderBottomLeftRadius: 32, 
-    borderBottomRightRadius: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  menuIconWrap: {
-    position: 'absolute',
-    left: SPACING.xl,
-    top: 56,
-    padding: 2,
-  },
-  headerRight: {
-    position: 'absolute',
-    right: SPACING.xl,
-    top: 56,
-    padding: 2,
-  },
-  headerTitle: { color: 'rgba(255,255,255,0.8)', fontSize: FONT_SIZES.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 },
-  headerTotal: { color: '#fff', fontSize: 32, fontWeight: '900', letterSpacing: -1 },
-  profitBadge: {
-    flexDirection: 'row', 
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10, 
-    paddingVertical: 4,
-    borderRadius: RADIUS.full,
-    marginTop: 8,
-  },
-  profitText: { color: '#fff', fontSize: 12, fontWeight: '800', marginLeft: 4 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.xl, paddingTop: 56, paddingBottom: SPACING.base, borderBottomWidth: 1 },
+  headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
+  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: `${COLORS.primary}15` },
+  
+  summaryCard: { borderRadius: RADIUS.xl, padding: SPACING.xl, marginBottom: SPACING.xl, borderWidth: 1, alignItems: 'center' },
+  summaryLabel: { fontSize: FONT_SIZES.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: SPACING.xs },
+  summaryTotal: { fontSize: 36, fontWeight: '900', marginBottom: SPACING.md },
+  summaryProfitBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.xs + 2, borderRadius: RADIUS.full, gap: 6 },
+  summaryProfitText: { fontSize: FONT_SIZES.sm, fontWeight: '800' },
+
   scroll: { padding: SPACING.xl, paddingTop: SPACING.xl },
   invCard: { borderRadius: RADIUS.xl, borderWidth: 1, padding: SPACING.lg, marginBottom: SPACING.base },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.md },

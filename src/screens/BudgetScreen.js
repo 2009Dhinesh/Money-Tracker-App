@@ -135,12 +135,6 @@ export default function BudgetScreen({ navigation }) {
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.addBtn}
-            onPress={() => navigation.navigate('Categories')}
-          >
-            <Ionicons name="grid-outline" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.addBtn}
             onPress={() => openModal()}
           >
             <Ionicons name="add" size={28} color={COLORS.primary} />

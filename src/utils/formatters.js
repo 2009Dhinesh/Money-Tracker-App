@@ -19,8 +19,8 @@ export const formatCurrency = (amount, currency = 'INR') => {
 export const formatCurrencyShort = (amount) => {
   if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)}Cr`;
   if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-  if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
-  return `₹${amount?.toFixed(0) || 0}`;
+  // Show full number with commas for anything below 1,00,000
+  return `₹${new Intl.NumberFormat('en-IN').format(amount || 0)}`;
 };
 
 /**

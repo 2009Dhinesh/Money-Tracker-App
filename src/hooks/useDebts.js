@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import debtApi from '../api/debtApi';
-import { syncDebtsWithNotifications } from '../utils/notificationService';
+import { syncDebtsWithNotifications, sendInstantNotification } from '../utils/notificationService';
 
 export const useDebts = () => {
   const [debts, setDebts] = useState([]);
@@ -35,7 +35,14 @@ export const useDebts = () => {
   const addDebt = useCallback(async (data) => {
     const res = await debtApi.createDebt(data);
     await fetchDebts();
-    return res.debt;
+    
+    // Push Notification for new Debt
+    sendInstantNotification(
+      'Debt Recorded 📝',
+      `You recorded a new debt of ₹${data.totalAmount?.toLocaleString()} with a contact.`
+    );
+    
+    return res;
   }, [fetchDebts]);
 
   const recordRepayment = useCallback(async (id, data) => {

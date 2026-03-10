@@ -11,6 +11,7 @@ import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const GOLD_TYPES = [
   { label: 'Jewellery', value: 'jewellery', icon: '💍' },
@@ -86,6 +87,8 @@ export default function GoldScreen({ navigation }) {
       { text: 'Delete', style: 'destructive', onPress: () => removeAsset(id) },
     ]);
   };
+
+  if (loading && !refreshing && assets.length === 0) return <LoadingSpinner message="Loading gold assets..." />;
 
   const pricePerGram = livePrice?.price || 7200;
   const profitColor = (summary?.totalProfitLoss || 0) >= 0 ? COLORS.income : COLORS.expense;

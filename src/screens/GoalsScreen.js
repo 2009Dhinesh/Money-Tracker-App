@@ -13,6 +13,7 @@ import EmptyState from '../components/EmptyState';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatCurrencyShort } from '../utils/formatters';
+import { sendInstantNotification } from '../utils/notificationService';
 import { useAccounts } from '../hooks/useAccounts';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { BANK_LIST } from '../constants/banks';
@@ -103,16 +104,29 @@ export default function GoalsScreen() {
     }
 
     try {
+      let res;
       if (fundMode === 'add') {
-        await addFunds(selectedGoal._id, amount, selectedAccount, selectedPaymentMethod);
+        res = await addFunds(selectedGoal._id, amount, selectedAccount, selectedPaymentMethod);
       } else {
-        await withdrawFunds(selectedGoal._id, amount, selectedAccount, selectedPaymentMethod);
+        res = await withdrawFunds(selectedGoal._id, amount, selectedAccount, selectedPaymentMethod);
       }
       setFundingModalVisible(false);
       setFundAmount('');
       setSelectedGoal(null);
       fetchAccounts(); // Sync account balances instantly
       
+      // Handle Account Budget Alert from Server
+      if (res && res.budgetMessage) {
+        sendInstantNotification(
+          '⚠️ Account Limit Alert!',
+          res.budgetMessage.message
+        );
+        // Also show an Alert for better visibility if they're in the app
+        setTimeout(() => {
+          Alert.alert('Limit Alert ⚠️', res.budgetMessage.message);
+        }, 500);
+      }
+
       if (fundMode === 'withdraw') {
         setTimeout(() => {
           Alert.alert('Don\'t give up!', 'Don\'t give up on your savings journey! Next time you will do it.');
@@ -297,10 +311,10 @@ export default function GoalsScreen() {
                 <TouchableOpacity
                   key={acc._id}
                   style={[
-                    styles.chip,
+                    styles.accCard,
                     { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
                     selectedAccount === acc._id && {
-                      backgroundColor: `${COLORS.primary}22`,
+                      backgroundColor: `${COLORS.primary}12`,
                       borderColor: COLORS.primary,
                       borderWidth: 2,
                     },
@@ -328,7 +342,7 @@ export default function GoalsScreen() {
                     </Text>
                     <Text
                       style={[
-                        { fontSize: 10, fontWeight: '600', marginTop: 2 },
+                        styles.accCardBalance,
                         { color: selectedAccount === acc._id ? COLORS.primary : colors.textTertiary },
                       ]}
                     >
@@ -346,10 +360,10 @@ export default function GoalsScreen() {
                 <TouchableOpacity
                   key={pm._id}
                   style={[
-                    styles.chip,
+                    styles.pmCard,
                     { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
                     selectedPaymentMethod === pm._id && {
-                      backgroundColor: `${COLORS.primary}22`,
+                      backgroundColor: `${COLORS.primary}12`,
                       borderColor: COLORS.primary,
                       borderWidth: 2,
                     },
@@ -456,16 +470,23 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontWeight: '700' },
   confirmBtn: { flex: 1, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   confirmBtnText: { color: '#fff', fontWeight: '700' },
-  sectionLabel: { fontSize: FONT_SIZES.sm, fontWeight: '600', marginBottom: SPACING.xs, marginTop: 10, alignSelf: 'flex-start' },
-  horizontalScroll: { flexDirection: 'row', marginBottom: 10 },
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: SPACING.xs,
-    borderWidth: 1, borderRadius: RADIUS.full,
-    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
-    marginRight: SPACING.sm,
+  sectionLabel: { fontSize: FONT_SIZES.sm, fontWeight: '700', marginBottom: SPACING.md, marginTop: SPACING.lg, alignSelf: 'flex-start' },
+  horizontalScroll: { flexDirection: 'row', marginBottom: SPACING.md },
+  accCard: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.md,
+    borderWidth: 1.5, borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.md,
+    marginRight: SPACING.sm, minWidth: 140,
   },
-  chipIcon: { fontSize: 14 },
-  chipLabel: { fontSize: FONT_SIZES.sm, fontWeight: '500', maxWidth: 90 },
-  accMiniIcon: { width: 24, height: 24, borderRadius: 6, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  miniLogo: { width: 18, height: 18 },
+  pmCard: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
+    borderWidth: 1.5, borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.md,
+    marginRight: SPACING.sm, minWidth: 120,
+  },
+  chipIcon: { fontSize: 18 },
+  chipLabel: { fontSize: FONT_SIZES.sm, fontWeight: '700', maxWidth: 100 },
+  accCardBalance: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+  accMiniIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  miniLogo: { width: 22, height: 22 },
 });

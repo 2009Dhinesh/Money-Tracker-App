@@ -53,7 +53,26 @@ export default function CustomDrawerContent({ onClose }) {
 
   const navigateTo = (screenName) => {
     if (onClose) onClose();
-    navigation.navigate(screenName);
+    
+    // Tab name to root screen mapping
+    const tabRoots = {
+      'Dashboard': 'DashboardMain',
+      'Transactions': 'RecordsMain',
+      'Accounts': 'AccountsMain',
+      'Categories': 'CategoriesMain',
+      'Budgets': 'BudgetsMain',
+      'Debts': 'DebtsMain',
+      'Analysis': 'ReportsMain'
+    };
+
+    if (tabRoots[screenName]) {
+      // Force navigation to the root of the tab stack
+      navigation.navigate(screenName, { 
+        screen: tabRoots[screenName] 
+      });
+    } else {
+      navigation.navigate(screenName);
+    }
   };
 
   const handleLogout = () => {
@@ -72,8 +91,8 @@ export default function CustomDrawerContent({ onClose }) {
         {/* -- User Profile Header -- */}
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <View style={styles.profileImageContainer}>
-            {user?.profilePicture ? (
-              <Image source={{ uri: user.profilePicture }} style={styles.profileImage} />
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.profileImage} resizeMode="cover" />
             ) : (
               <View style={[styles.avatarPlaceholder, { backgroundColor: COLORS.primary }]}>
                 <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'U'}</Text>

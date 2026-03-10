@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Switch, Alert, Modal, TouchableWithoutFeedback, Platform, Dimensions
+  Switch, Alert, Modal, TouchableWithoutFeedback, Platform, Dimensions, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTransactions } from '../hooks/useTransactions';
+import { useAccounts } from '../hooks/useAccounts';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import BADGES, { getAchievements } from '../utils/gamificationService';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as ImagePicker from 'expo-image-picker';
 import { storage } from '../utils/storage';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { useAppDrawer } from '../context/DrawerContext';
 import PinPad from '../components/PinPad';
 
-const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY'];
+const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout, updateUser, setIsBiometricEnabled, appPin, setAppPin } = useAuth();
@@ -29,13 +31,25 @@ export default function ProfileScreen({ navigation }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [currency, setCurrency] = useState(user?.currency || 'INR');
-  const [monthlyIncome, setMonthlyIncome] = useState(user?.monthlyIncome?.toString() || '');
+  const [expectedIncomes, setExpectedIncomes] = useState(user?.expectedIncomes || []);
   const [loading, setLoading] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [hasBiometricHardware, setHasBiometricHardware] = useState(false);
+  const [avatar, setAvatar] = useState(user?.avatar || '');
+
+  // Expected Incomes State
+  const { accounts, fetchAccounts } = useAccounts();
+  const [incomeModalVisible, setIncomeModalVisible] = useState(false);
+  const [editingIncomeIndex, setEditingIncomeIndex] = useState(null);
+  const [incomeAmount, setIncomeAmount] = useState('');
+  const [incomeType, setIncomeType] = useState('Salary');
+  const [customIncomeType, setCustomIncomeType] = useState('');
+  const [incomeAccountId, setIncomeAccountId] = useState(null);
+  const [incomeExpectedDate, setIncomeExpectedDate] = useState('1');
 
   useEffect(() => {
     fetchSummary();
+    fetchAccounts();
     const checkBiometric = async () => {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
@@ -47,6 +61,39 @@ export default function ProfileScreen({ navigation }) {
     };
     checkBiometric();
   }, [user]);
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.1, // High compression to avoid AsyncStorage limit
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        setAvatar(base64Image);
+        
+        // Optimistically update
+        try {
+          await updateUser({
+            name: name.trim(),
+            currency,
+            expectedIncomes: expectedIncomes,
+            avatar: base64Image
+          });
+          Alert.alert('✅ Success', 'Profile picture updated successfully');
+        } catch (err) {
+          Alert.alert('Error', err.message || 'Failed to update profile picture');
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
+      console.log(error);
+    }
+  };
 
   const handleBiometricToggle = async (value) => {
     if (value) {
@@ -137,7 +184,8 @@ export default function ProfileScreen({ navigation }) {
       await updateUser({
         name: name.trim(),
         currency,
-        monthlyIncome: parseFloat(monthlyIncome) || 0,
+        expectedIncomes,
+        avatar: avatar || user?.avatar // ensure we don't accidentally clear it
       });
       setEditing(false);
       Alert.alert('✅ Success', 'Profile updated successfully');
@@ -246,9 +294,16 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.headerTitle}>Profile</Text>
           </View>
 
-          <View style={styles.avatarWrap}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          <TouchableOpacity style={styles.avatarWrap} onPress={handlePickImage}>
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
+            <View style={styles.editIconBadge}>
+              <Ionicons name="camera" size={14} color="#fff" />
+            </View>
+          </TouchableOpacity>
           <Text style={styles.userName}>{user?.name}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
         </LinearGradient>
@@ -259,6 +314,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
             {[
               { id: 'account', label: 'Account', icon: 'person-outline' },
+              { id: 'incomes', label: 'Incomes', icon: 'cash-outline' },
               { id: 'security', label: 'Security', icon: 'shield-checkmark-outline' },
               { id: 'preferences', label: 'Prefs', icon: 'settings-outline' },
               { id: 'badges', label: 'Badges', icon: 'trophy-outline' },
@@ -311,14 +367,6 @@ export default function ProfileScreen({ navigation }) {
                       icon="person-outline"
                       placeholder="Your name"
                     />
-                    <Input
-                      label="Monthly Income (₹)"
-                      value={monthlyIncome}
-                      onChangeText={setMonthlyIncome}
-                      keyboardType="numeric"
-                      icon="cash-outline"
-                      placeholder="e.g. 50000"
-                    />
                     {/* Currency Picker */}
                     <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Currency</Text>
                     <View style={styles.currencyRow}>
@@ -344,7 +392,6 @@ export default function ProfileScreen({ navigation }) {
                   <>
                     <ProfileRow icon="person-outline" label="Name" value={user?.name} colors={colors} />
                     <ProfileRow icon="mail-outline" label="Email" value={user?.email} colors={colors} />
-                    <ProfileRow icon="cash-outline" label="Monthly Income" value={`₹${user?.monthlyIncome?.toLocaleString() || 0}`} colors={colors} />
                     <ProfileRow icon="pricetag-outline" label="Currency" value={user?.currency || 'INR'} colors={colors} />
                   </>
                 )}
@@ -358,6 +405,88 @@ export default function ProfileScreen({ navigation }) {
                 style={{ marginTop: SPACING.md }}
               />
             </>
+          )}
+
+          {activeTab === 'incomes' && (
+            <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+               <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Expected Incomes</Text>
+                  <TouchableOpacity onPress={() => {
+                    setEditingIncomeIndex(null);
+                    setIncomeAmount('');
+                    setIncomeType('Salary');
+                    setCustomIncomeType('');
+                    setIncomeAccountId(null);
+                    setIncomeExpectedDate('1');
+                    setIncomeModalVisible(true);
+                  }}>
+                    <Ionicons name="add-circle" size={24} color={COLORS.primary} />
+                  </TouchableOpacity>
+                </View>
+
+                {expectedIncomes.length === 0 ? (
+                  <Text style={{ color: colors.textTertiary, textAlign: 'center', paddingVertical: SPACING.xl }}>
+                    No expected incomes added yet.
+                  </Text>
+                ) : (
+                  expectedIncomes.map((inc, index) => {
+                    const acc = accounts.find(a => a._id === inc.accountId);
+                    return (
+                      <View key={index} style={[styles.incomeCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.incomeTitle, { color: colors.textPrimary }]}>
+                            {inc.incomeType === 'Other' ? inc.customIncomeType : inc.incomeType}
+                          </Text>
+                          <Text style={[styles.incomeSub, { color: colors.textSecondary }]}>
+                            {acc ? acc.name : 'Unknown Account'} • Day {inc.expectedDate}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', gap: SPACING.xs }}>
+                          <Text style={[styles.incomeAmount, { color: COLORS.income }]}>
+                            ₹{inc.amount?.toLocaleString()}
+                          </Text>
+                          <View style={{ flexDirection: 'row', gap: SPACING.lg, marginTop: SPACING.xs }}>
+                            <TouchableOpacity onPress={() => {
+                              setEditingIncomeIndex(index);
+                              setIncomeAmount(inc.amount.toString());
+                              setIncomeType(inc.incomeType);
+                              setCustomIncomeType(inc.customIncomeType || '');
+                              setIncomeAccountId(inc.accountId);
+                              setIncomeExpectedDate(inc.expectedDate.toString());
+                              setIncomeModalVisible(true);
+                            }} style={{ padding: 4 }}>
+                              <Ionicons name="pencil" size={18} color={COLORS.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => {
+                              Alert.alert('Delete', 'Are you sure you want to delete this expected income?', [
+                                { text: 'Cancel', style: 'cancel' },
+                                { 
+                                  text: 'Delete', 
+                                  style: 'destructive', 
+                                  onPress: async () => {
+                                    const newIncomes = expectedIncomes.filter((_, i) => i !== index);
+                                    setExpectedIncomes(newIncomes);
+                                    setLoading(true);
+                                    try {
+                                      await updateUser({ expectedIncomes: newIncomes });
+                                    } catch (err) {
+                                      Alert.alert('Error', 'Failed to delete income');
+                                    } finally {
+                                      setLoading(false);
+                                    }
+                                  } 
+                                },
+                              ]);
+                            }} style={{ padding: 4 }}>
+                              <Ionicons name="trash" size={18} color={COLORS.expense} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+            </View>
           )}
 
           {activeTab === 'preferences' && (
@@ -644,6 +773,136 @@ export default function ProfileScreen({ navigation }) {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* Expected Income Modal */}
+      <Modal visible={incomeModalVisible} transparent animationType="slide" onRequestClose={() => setIncomeModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {editingIncomeIndex !== null ? 'Edit Expected Income' : 'Add Expected Income'}
+              </Text>
+              <TouchableOpacity onPress={() => setIncomeModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Input
+                label="Expected Amount (₹)"
+                value={incomeAmount}
+                onChangeText={setIncomeAmount}
+                keyboardType="numeric"
+                icon="cash-outline"
+                placeholder="e.g. 50000"
+              />
+
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Account</Text>
+              <View style={styles.currencyRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {accounts.map((acc) => (
+                    <TouchableOpacity
+                      key={acc._id}
+                      style={[
+                        styles.currencyChip,
+                        { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                        incomeAccountId === acc._id && { backgroundColor: `${COLORS.primary}18`, borderColor: COLORS.primary },
+                      ]}
+                      onPress={() => setIncomeAccountId(acc._id)}
+                    >
+                      <Text style={[styles.currencyText, { color: incomeAccountId === acc._id ? COLORS.primary : colors.textSecondary }]}>
+                        {acc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Day of the Month (1-31)</Text>
+              <Input
+                value={incomeExpectedDate}
+                onChangeText={setIncomeExpectedDate}
+                keyboardType="numeric"
+                icon="calendar-outline"
+                placeholder="e.g. 1"
+              />
+
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Income Type</Text>
+              <View style={styles.currencyRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {['Salary', 'Freelance', 'Business', 'Investment', 'Other'].map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[
+                        styles.currencyChip,
+                        { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                        incomeType === t && { backgroundColor: `${COLORS.primary}18`, borderColor: COLORS.primary },
+                      ]}
+                      onPress={() => setIncomeType(t)}
+                    >
+                      <Text style={[styles.currencyText, { color: incomeType === t ? COLORS.primary : colors.textSecondary }]}>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {incomeType === 'Other' && (
+                <Input
+                  label="Custom Income Type"
+                  value={customIncomeType}
+                  onChangeText={setCustomIncomeType}
+                  icon="pricetag-outline"
+                  placeholder="e.g. Allowance"
+                />
+              )}
+
+              <Button
+                title={editingIncomeIndex !== null ? 'Update Income' : 'Add Income'}
+                onPress={async () => {
+                  if (!incomeAmount || !incomeAccountId || !incomeExpectedDate) {
+                    return Alert.alert('Error', 'Please fill in amount, account, and date.');
+                  }
+                  const dateNum = parseInt(incomeExpectedDate, 10);
+                  if (isNaN(dateNum) || dateNum < 1 || dateNum > 31) {
+                    return Alert.alert('Error', 'Expected date must be between 1 and 31.');
+                  }
+
+                  const newInc = {
+                    amount: parseFloat(incomeAmount),
+                    accountId: incomeAccountId,
+                    incomeType,
+                    customIncomeType: incomeType === 'Other' ? customIncomeType : '',
+                    expectedDate: dateNum
+                  };
+
+                  let updatedIncomes = [...expectedIncomes];
+                  if (editingIncomeIndex !== null) {
+                    updatedIncomes[editingIncomeIndex] = newInc;
+                  } else {
+                    updatedIncomes.push(newInc);
+                  }
+
+                  setExpectedIncomes(updatedIncomes);
+                  setLoading(true);
+                  try {
+                    await updateUser({ expectedIncomes: updatedIncomes });
+                    setIncomeModalVisible(false);
+                    Alert.alert('✅ Success', 'Expected income saved!');
+                  } catch (err) {
+                    Alert.alert('Error', 'Failed to save income');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                loading={loading}
+                style={{ marginTop: SPACING.lg, marginBottom: SPACING.xl }}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* PIN Security Modal */}
       <Modal
         visible={pinModalVisible}
@@ -747,6 +1006,21 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)',
     marginBottom: SPACING.sm,
+    position: 'relative',
+  },
+  avatarImage: { width: '100%', height: '100%', borderRadius: 40 },
+  editIconBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.primary,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#3D2B8E',
   },
   avatarText: { fontSize: FONT_SIZES['3xl'], fontWeight: '800', color: '#fff' },
   userName: { fontSize: FONT_SIZES.xl, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
@@ -781,7 +1055,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   badgeIcon: { fontSize: 32, marginBottom: 4 },
-  badgeTitle: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  badgeTitle: { fontSize: 10, fontWeight: '600', textAlign: 'center', marginTop: SPACING.sm },
+
+  // Incomes Tab Styling
+  incomeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    marginBottom: SPACING.md,
+  },
+  incomeTitle: { fontSize: FONT_SIZES.base, fontWeight: '700', marginBottom: 2 },
+  incomeSub: { fontSize: FONT_SIZES.xs, fontWeight: '500' },
+  incomeAmount: { fontSize: FONT_SIZES.md, fontWeight: '800' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

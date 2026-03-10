@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, StyleSheet, SectionList, TouchableOpacity,
   TextInput, RefreshControl, Alert, StatusBar, ScrollView, Image, Dimensions, Platform,
   Modal, TouchableWithoutFeedback
 } from 'react-native';
@@ -18,7 +18,7 @@ import EmptyState from '../components/EmptyState';
 import Button from '../components/Button';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth, isToday, isYesterday } from 'date-fns';
 
 const { width } = Dimensions.get('window');
 
@@ -134,6 +134,37 @@ export default function TransactionsScreen({ navigation, route }) {
     />
   ), [navigation, handleDelete]);
 
+  const sections = useMemo(() => {
+    if (!transactions || transactions.length === 0) return [];
+    
+    const groups = {};
+    
+    transactions.forEach(txn => {
+      const date = new Date(txn.date);
+      let title;
+      
+      if (isToday(date)) title = 'Today';
+      else if (isYesterday(date)) title = 'Yesterday';
+      else title = format(date, 'dd MMM yyyy');
+      
+      if (!groups[title]) {
+        groups[title] = [];
+      }
+      groups[title].push(txn);
+    });
+    
+    return Object.keys(groups).map(title => ({
+      title,
+      data: groups[title]
+    }));
+  }, [transactions]);
+
+  const renderSectionHeader = useCallback(({ section: { title } }) => (
+    <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
+      <Text style={[styles.sectionHeaderText, { color: colors.textSecondary }]}>{title}</Text>
+    </View>
+  ), [colors]);
+
   const headerComponent = useMemo(() => (
     <View>
       {/* Month Navigator */}
@@ -236,13 +267,17 @@ export default function TransactionsScreen({ navigation, route }) {
         <Text style={[styles.title, { color: colors.textPrimary }]}>Transactions</Text>
       </View>
 
-      <FlatList
-        data={transactions}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
         ListHeaderComponent={headerComponent}
+        stickySectionHeadersEnabled={true}
         ListEmptyComponent={
-          !loading ? (
+          loading && !refreshing ? (
+            <LoadingSpinner message="Loading transactions..." />
+          ) : (
             <EmptyState
               icon="receipt-outline"
               title="No transactions found"
@@ -250,7 +285,7 @@ export default function TransactionsScreen({ navigation, route }) {
             >
               <Button title="+ Set First Transaction" onPress={() => navigation.navigate('AddTransaction')} />
             </EmptyState>
-          ) : null
+          )
         }
         ListFooterComponent={
           page < pagination.pages ? (
@@ -506,4 +541,16 @@ const styles = StyleSheet.create({
   },
   optionIcon: { fontSize: 16 },
   optionBankLogo: { width: 20, height: 20 },
+  sectionHeader: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+    borderRadius: RADIUS.sm,
+  },
+  sectionHeaderText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
 });

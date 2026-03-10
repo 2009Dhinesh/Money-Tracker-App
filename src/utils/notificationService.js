@@ -77,7 +77,7 @@ export const scheduleReminderNotification = async (title, body, date) => {
 };
 
 export const sendInstantNotification = async (title, body) => {
-  if (isExpoGo) return;
+  // Allow local push notifications in Expo Go, though background may have issues.
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
