@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StatusBar, Alert, Image, Modal
+  KeyboardAvoidingView, Platform, StatusBar, Image, Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
+import { useAlert } from '../context/AlertContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
@@ -51,7 +52,9 @@ export default function AddTransactionScreen({ navigation, route }) {
   );
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [isBorrowing, setIsBorrowing] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const { alert: showAlert } = useAlert();
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // 'account', 'toAccount', 'category', 'paymentMethod'
 
@@ -99,33 +102,62 @@ export default function AddTransactionScreen({ navigation, route }) {
   const handleSave = async () => {
     if (!validate()) return;
 
+    const amountVal = parseFloat(amount);
     const acc = accounts.find(a => a._id === selectedAccount);
+
+    // Insufficient Balance Check
+    if ((type === 'expense' || type === 'transfer') && acc) {
+      const oldAmount = isEdit && existingTxn?.amount ? parseFloat(existingTxn.amount) : 0;
+      const adjustAmount = type === 'expense' || type === 'transfer' ? -amountVal : amountVal;
+      const currentImpact = isEdit && (existingTxn.type === 'expense' || existingTxn.type === 'transfer') ? -oldAmount : 
+                            isEdit && (existingTxn.type === 'income') ? oldAmount : 0;
+      
+      // Calculate what the balance would be if we "undid" the old transaction and applied the new one
+      const predictedBalance = acc.balance - currentImpact + (type === 'income' ? amountVal : -amountVal);
+
+      if (predictedBalance < 0) {
+        showAlert({
+          visible: true,
+          title: 'Insufficient Balance ⚠️',
+          message: `Your account ${acc.name} will have insufficient funds (₹${predictedBalance.toFixed(2)}). Please adjust the amount.`,
+          type: 'warning'
+        });
+        return;
+      }
+    }
 
     // If it's an expense from an account with other people's money,
     // and no specific person has been selected yet, ASK the user conditionally.
     if (type === 'expense' && acc?.otherPersons?.length > 0 && !selectedOtherPerson) {
-      // Calculate how much money belongs to the user
       const otherPersonsTotal = acc.otherPersons.reduce((s, p) => s + (Number(p.amount) || 0), 0);
       const userBalance = acc.balance - otherPersonsTotal;
       const expenseAmount = parseFloat(amount);
 
-      // Only prompt if the expense exceeds the user's own funds
       if (expenseAmount > userBalance) {
-        Alert.alert(
-          '👤 Third-Party Funds Needed',
-          `Your expense (₹${expenseAmount}) exceeds your available personal balance (₹${Math.max(0, userBalance)}). Do you want to use funds from someone else in this account?`,
-          [
+        const shortfall = expenseAmount - Math.max(0, userBalance);
+        showAlert({
+          visible: true,
+          title: '👤 Third-Party Funds Needed',
+          message: `Your personal balance is ₹${Math.max(0, userBalance).toFixed(2)}. This expense requires an additional ₹${shortfall.toFixed(2)} from someone else in this account. Borrow it?`,
+          type: 'warning',
+          buttons: [
             { 
               text: 'Select Person', 
-              onPress: () => setActiveModal('person') 
+              onPress: () => {
+                setIsBorrowing(true);
+                setActiveModal('person');
+              }
             },
             { 
               text: 'My Own Expense', 
-              onPress: () => proceedSave() 
+              onPress: () => {
+                setIsBorrowing(false);
+                proceedSave();
+              }
             },
             { text: 'Cancel', style: 'cancel' }
           ]
-        );
+        });
         return;
       }
     }
@@ -136,6 +168,30 @@ export default function AddTransactionScreen({ navigation, route }) {
   const proceedSave = async () => {
     // Note: validation already done in handleSave
 
+       if (!title.trim()) {
+      showAlert({ visible: true, title: 'Required Field', message: 'Please enter a title for this transaction.', type: 'warning' });
+      return;
+    }
+    if (!amount || isNaN(parseFloat(amount))) {
+      showAlert({ visible: true, title: 'Invalid Amount', message: 'Please enter a valid amount.', type: 'warning' });
+      return;
+    }
+    if (!selectedAccount) {
+      showAlert({ visible: true, title: 'Missing Account', message: 'Please select an account.', type: 'warning' });
+      return;
+    }
+    if (type !== 'transfer' && !selectedCategory) {
+      showAlert({ visible: true, title: 'Missing Category', message: 'Please select a category.', type: 'warning' });
+      return;
+    }
+    if (type === 'transfer' && (!selectedToAccount || selectedToAccount === selectedAccount)) {
+      showAlert({ visible: true, title: 'Invalid Transfer', message: 'Please select a different destination account.', type: 'warning' });
+      return;
+    }
+    if (!selectedPaymentMethod) {
+      showAlert({ visible: true, title: 'Missing Payment Method', message: 'Please select a payment method.', type: 'warning' });
+      return;
+    }
     const amountVal = parseFloat(amount);
     let willExceedBudget = false;
     let willHitWarning = false;
@@ -176,13 +232,14 @@ export default function AddTransactionScreen({ navigation, route }) {
           frequency: isRecurring ? frequency : 'none',
           date: new Date(date).toISOString(),
           otherPersonId: selectedOtherPerson,
+          isBorrowing: isBorrowing,
         };
 
         console.log('[AddTransaction] Data sending:', JSON.stringify(data));
 
         if (isEdit) {
           await editTransaction(existingTxn._id, data);
-          Alert.alert('✅ Success', 'Transaction updated successfully');
+          showAlert({ visible: true, title: '✅ Success', message: 'Transaction updated successfully', type: 'success', buttons: [{ text: 'OK', onPress: () => navigation.goBack() }] });
         } else {
           const res = await addTransaction(data);
           console.log('[AddTransaction] Response:', JSON.stringify(res));
@@ -194,9 +251,7 @@ export default function AddTransactionScreen({ navigation, route }) {
               res.budgetMessage.message
             );
             // Show Alert immediately
-            Alert.alert('Limit Alert ⚠️', res.budgetMessage.message, [
-              { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
+            showAlert({ visible: true, title: 'Limit Alert ⚠️', message: res.budgetMessage.message, buttons: [{ text: 'OK', onPress: () => navigation.goBack() }] });
             return; // EXIT EARLY so we don't show the generic success or goBack twice
           }
 
@@ -228,27 +283,28 @@ export default function AddTransactionScreen({ navigation, route }) {
             );
           }
 
-          Alert.alert('✅ Success', 'Transaction added successfully');
+          showAlert({ visible: true, title: '✅ Success', message: 'Transaction added successfully', type: 'success', buttons: [{ text: 'OK', onPress: () => navigation.goBack() }] });
         }
-        navigation.goBack();
       } catch (err) {
-        Alert.alert('Error', err.message || 'Something went wrong');
+        showAlert({ visible: true, title: 'Error', message: err.message || 'Something went wrong', type: 'error' });
       } finally {
         setLoading(false);
       }
     };
 
     if (willExceedBudget) {
-      Alert.alert(
-        'Limit Exceeded Warning ⚠️',
-        budgetWarningMsg,
-        [
+      showAlert({
+        visible: true,
+        title: 'Limit Exceeded Warning ⚠️',
+        message: budgetWarningMsg,
+        type: 'warning',
+        buttons: [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Proceed', style: 'destructive', onPress: processTransaction }
+          { text: 'Proceed', style: 'destructive', onPress: () => processTransaction() }
         ]
-      );
+      });
     } else {
-      processTransaction();
+      await processTransaction();
     }
   };
 
@@ -262,7 +318,7 @@ export default function AddTransactionScreen({ navigation, route }) {
       {/* ── Header ─────────────────────────────── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           {isEdit ? 'Edit Transaction' : 'Add Transaction'}
@@ -289,7 +345,6 @@ export default function AddTransactionScreen({ navigation, route }) {
               onPress={() => { 
                 setType(t); 
                 setSelectedCategory(t === 'transfer' ? null : selectedCategory); 
-                if (t === 'transfer') setSelectedOtherPerson(null);
               }}
             >
               <Ionicons
@@ -370,7 +425,9 @@ export default function AddTransactionScreen({ navigation, route }) {
                   <View style={[styles.selectionIconBg, { backgroundColor: `${acc.color}15` }]}>
                     {displayLogo ? <Image source={{ uri: displayLogo }} style={styles.selectionLogo} resizeMode="contain" /> : <Text style={styles.selectionIcon}>{acc.icon}</Text>}
                   </View>
-                  <Text style={[styles.selectionText, { color: colors.textPrimary }]}>{acc.name}</Text>
+                  <Text style={[styles.selectionText, { color: colors.textPrimary }]}>
+                    {acc.isShared ? `${acc.name} (${acc.ownerName})` : `${acc.name} (You)`}
+                  </Text>
                 </>
               );
             })()}
@@ -382,7 +439,7 @@ export default function AddTransactionScreen({ navigation, route }) {
         {/* ── Other Person Picker (If account has other persons) ── */}
         {(() => {
           const acc = accounts.find(a => a._id === selectedAccount);
-          if (acc && acc.otherPersons && acc.otherPersons.length > 0 && (type === 'income' || type === 'expense')) {
+          if (acc && acc.otherPersons && acc.otherPersons.length > 0) {
             return (
               <>
                 <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Link to Third Party (Optional)</Text>
@@ -430,7 +487,9 @@ export default function AddTransactionScreen({ navigation, route }) {
                       <View style={[styles.selectionIconBg, { backgroundColor: `${acc.color}15` }]}>
                         {displayLogo ? <Image source={{ uri: displayLogo }} style={styles.selectionLogo} resizeMode="contain" /> : <Text style={styles.selectionIcon}>{acc.icon}</Text>}
                       </View>
-                      <Text style={[styles.selectionText, { color: colors.textPrimary }]}>{acc.name}</Text>
+                      <Text style={[styles.selectionText, { color: colors.textPrimary }]}>
+                        {acc.isShared ? `${acc.name} (${acc.ownerName})` : `${acc.name} (You)`}
+                      </Text>
                     </>
                   );
                 })()}
@@ -575,7 +634,9 @@ export default function AddTransactionScreen({ navigation, route }) {
                       <View style={[styles.selectionIconBg, { backgroundColor: `${acc.color}15` }]}>
                         {displayLogo ? <Image source={{ uri: displayLogo }} style={styles.selectionLogo} resizeMode="contain" /> : <Text style={styles.selectionIcon}>{acc.icon}</Text>}
                       </View>
-                      <Text style={[styles.modalOptionText, { color: colors.textPrimary }]}>{acc.name}</Text>
+                      <Text style={[styles.modalOptionText, { color: colors.textPrimary }]}>
+                        {acc.isShared ? `${acc.name} (${acc.ownerName})` : `${acc.name} (You)`}
+                      </Text>
                       {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
                     </TouchableOpacity>
                   );
@@ -646,6 +707,7 @@ export default function AddTransactionScreen({ navigation, route }) {
                             style={[styles.modalOption, isSelected && { backgroundColor: `${COLORS.primary}15` }]}
                             onPress={() => {
                               setSelectedOtherPerson(person._id);
+                              // Note: isBorrowing is already set by the trigger (shortfall alert or manual click)
                               setActiveModal(null);
                             }}
                           >
@@ -687,6 +749,8 @@ export default function AddTransactionScreen({ navigation, route }) {
           setErrors(prev => ({ ...prev, amount: null }));
         }}
       />
+
+      {/* CustomNumericKeyboard already here */}
     </KeyboardAvoidingView>
   );
 }

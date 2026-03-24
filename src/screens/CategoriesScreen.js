@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Modal, FlatList,
+  StatusBar, Modal, FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useAccounts } from '../hooks/useAccounts';
-import { useAppDrawer } from '../context/DrawerContext';
+import { useAlert } from '../context/AlertContext';
+
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -36,7 +37,8 @@ export default function CategoriesScreen({ navigation }) {
   const { categories, loading: loadingCat, fetchCategories, addCategory, editCategory, removeCategory } = useCategories();
   const { paymentMethods, loading: loadingPay, fetchPaymentMethods, addPaymentMethod, editPaymentMethod, removePaymentMethod } = usePaymentMethods();
   const { accounts, fetchAccounts } = useAccounts();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
   
   const [activeTab, setActiveTab] = useState('expense'); // 'expense' | 'income' | 'payment'
   
@@ -109,7 +111,7 @@ export default function CategoriesScreen({ navigation }) {
       setActiveTab(catForm.type);
       closeModals();
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, [], 'error');
     } finally {
       setSaving(false);
     }
@@ -125,7 +127,7 @@ export default function CategoriesScreen({ navigation }) {
       setActiveTab('payment');
       closeModals();
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, [], 'error');
     } finally {
       setSaving(false);
     }
@@ -133,29 +135,34 @@ export default function CategoriesScreen({ navigation }) {
 
   const handleDelete = (id, isDefault, isPayment) => {
     if (isDefault) {
-      Alert.alert('System Item', 'Defaults cannot be deleted.');
+      showAlert('System Item', 'Defaults cannot be deleted.', [], 'warning');
       return;
     }
-    Alert.alert('Delete', `Are you sure you want to delete this ${isPayment ? 'payment method' : 'category'}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Delete', 
-        style: 'destructive', 
-        onPress: async () => {
-          try {
-            if (isPayment) {
-              await removePaymentMethod(id);
-              fetchPaymentMethods();
-            } else {
-              await removeCategory(id);
-              fetchCategories();
+    showAlert(
+      'Delete', 
+      `Are you sure you want to delete this ${isPayment ? 'payment method' : 'category'}?`, 
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              if (isPayment) {
+                await removePaymentMethod(id);
+                fetchPaymentMethods();
+              } else {
+                await removeCategory(id);
+                fetchCategories();
+              }
+            } catch (err) {
+              showAlert('Error', err.message, [], 'error');
             }
-          } catch (err) {
-            Alert.alert('Error', err.message);
-          }
-        } 
-      },
-    ]);
+          } 
+        },
+      ],
+      'warning'
+    );
   };
 
   const renderItem = useCallback(({ item }) => {
@@ -191,8 +198,8 @@ export default function CategoriesScreen({ navigation }) {
       
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Manage Data</Text>
         <TouchableOpacity onPress={() => setSelectionModalVisible(true)} style={styles.headerRight}>

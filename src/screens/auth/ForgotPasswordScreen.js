@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView,
-  Platform, ScrollView, Dimensions, Alert
+  Platform, ScrollView, Dimensions
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useAlert } from '../../context/AlertContext';
 import authApi from '../../api/authApi';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
@@ -15,6 +16,7 @@ const { height } = Dimensions.get('window');
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { alert: showAlert } = useAlert();
   
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -41,7 +43,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     try {
       await authApi.forgotPassword({ email: email.trim() });
       setStep(2);
-      Alert.alert('Success', 'OTP has been sent to your email.');
+      showAlert('Success', 'OTP has been sent to your email.', [], 'success');
     } catch (err) {
       setApiError(err.response?.data?.message || err.message || 'Failed to send OTP');
     } finally {
@@ -69,9 +71,9 @@ const ForgotPasswordScreen = ({ navigation }) => {
         otp,
         newPassword
       });
-      Alert.alert('Success', 'Password reset successful. Please login with your new password.', [
+      showAlert('Success', 'Password reset successful. Please login with your new password.', [
         { text: 'Login', onPress: () => navigation.navigate('Login') }
-      ]);
+      ], 'success');
     } catch (err) {
       setApiError(err.response?.data?.message || err.message || 'Failed to reset password');
     } finally {

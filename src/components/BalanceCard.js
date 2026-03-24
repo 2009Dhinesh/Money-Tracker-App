@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import { COLORS, RADIUS, SPACING, FONT_SIZES, SHADOWS } from '../constants/theme
 
 const { width } = Dimensions.get('window');
 
-const BalanceCard = ({ balance, income, expense, month, otherPersonsTotal = 0, incomeCount = 0, expenseCount = 0 }) => {
+const BalanceCard = memo(({ balance, income, expense, month, otherPersonsTotal = 0, incomeCount = 0, expenseCount = 0 }) => {
   const { colors, isDark } = useTheme();
   const savingsRate = income > 0 ? Math.round(((income - expense) / income) * 100) : 0;
   
@@ -113,7 +113,7 @@ const BalanceCard = ({ balance, income, expense, month, otherPersonsTotal = 0, i
       </View>
     </LinearGradient>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

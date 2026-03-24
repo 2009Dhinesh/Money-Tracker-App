@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SectionList, TouchableOpacity,
-  TextInput, RefreshControl, Alert, StatusBar, ScrollView, Image, Dimensions, Platform,
+  TextInput, RefreshControl, StatusBar, ScrollView, Image, Dimensions, Platform,
   Modal, TouchableWithoutFeedback
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -11,6 +11,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
 import { useAccounts } from '../hooks/useAccounts';
+import { useAlert } from '../context/AlertContext';
 import { useAppDrawer } from '../context/DrawerContext';
 import TransactionItem from '../components/TransactionItem';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -19,6 +20,7 @@ import Button from '../components/Button';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameMonth, isToday, isYesterday } from 'date-fns';
+import { BlurView } from 'expo-blur';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +37,7 @@ export default function TransactionsScreen({ navigation, route }) {
   const { accounts, fetchAccounts } = useAccounts();
   const { categories, fetchCategories } = useCategories();
   const { openDrawer } = useAppDrawer();
+  const { alert: showAlert } = useAlert();
 
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState('');
@@ -113,17 +116,22 @@ export default function TransactionsScreen({ navigation, route }) {
   };
 
   const handleDelete = (id) => {
-    Alert.alert('Delete Transaction', 'Are you sure you want to delete this transaction?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await removeTransaction(id);
-          load(1);
+    showAlert(
+      'Delete Transaction', 
+      'Are you sure you want to delete this transaction?', 
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await removeTransaction(id);
+            load(1);
+          },
         },
-      },
-    ]);
+      ],
+      'warning'
+    );
   };
 
   const renderItem = useCallback(({ item }) => (
@@ -160,17 +168,32 @@ export default function TransactionsScreen({ navigation, route }) {
   }, [transactions]);
 
   const renderSectionHeader = useCallback(({ section: { title } }) => (
-    <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
-      <Text style={[styles.sectionHeaderText, { color: colors.textSecondary }]}>{title}</Text>
+    <View style={styles.sectionHeaderContainer}>
+      <BlurView 
+        intensity={Platform.OS === 'ios' ? 45 : 100} 
+        tint={isDark ? 'dark' : 'light'}
+        style={[
+          styles.sectionHeader, 
+          { 
+            backgroundColor: isDark ? 'rgba(40, 40, 40, 0.8)' : 'rgba(255, 255, 255, 0.85)',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+          }
+        ]}
+      >
+        <View style={styles.sectionHeaderInner}>
+          <Text style={[styles.sectionHeaderText, { color: COLORS.primary }]}>{title}</Text>
+          <View style={[styles.sectionHeaderDot, { backgroundColor: COLORS.primary }]} />
+        </View>
+      </BlurView>
     </View>
-  ), [colors]);
+  ), [colors, isDark]);
 
   const headerComponent = useMemo(() => (
     <View>
       {/* Month Navigator */}
-      <View style={[styles.dateNav, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => setSelectedDate(d => subMonths(d, 1))}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
+      <View style={[styles.dateNav, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <TouchableOpacity onPress={() => setSelectedDate(d => subMonths(d, 1))} style={styles.navIcon}>
+          <Ionicons name="chevron-back" size={20} color={COLORS.primary} />
         </TouchableOpacity>
         
         <View style={[styles.dateDisplay, { paddingVertical: 4, paddingHorizontal: 12 }]}>
@@ -457,6 +480,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: RADIUS.lg,
     paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm + 2,
     marginBottom: SPACING.md,
+    ...SHADOWS.small,
   },
   searchInput: { flex: 1, fontSize: FONT_SIZES.base, paddingVertical: 2 },
   filterRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.base },
@@ -481,11 +505,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.base,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
     marginBottom: SPACING.md,
+    ...SHADOWS.small,
+  },
+  navIcon: {
+    padding: SPACING.xs,
   },
   dateDisplay: {
     flexDirection: 'row',
@@ -541,16 +569,38 @@ const styles = StyleSheet.create({
   },
   optionIcon: { fontSize: 16 },
   optionBankLogo: { width: 20, height: 20 },
+  sectionHeaderContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    backgroundColor: 'transparent',
+    width: '100%',
+  },
   sectionHeader: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    marginTop: SPACING.sm,
-    borderRadius: RADIUS.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.small,
+  },
+  sectionHeaderInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sectionHeaderText: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '900',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
+  },
+  sectionHeaderDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.6,
   },
 });

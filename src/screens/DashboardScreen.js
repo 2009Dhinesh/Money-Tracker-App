@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, StatusBar, Dimensions, Image, Modal, Alert
+  RefreshControl, StatusBar, Dimensions, Image, Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { PieChart } from 'react-native-chart-kit';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { useBudgets } from '../hooks/useBudgets';
 import { useDebts } from '../hooks/useDebts';
@@ -25,7 +26,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { storage } from '../utils/storage';
-import { requestNotificationPermissions, checkPermissionStatus } from '../utils/notificationService';
+import { requestNotificationPermissions, checkPermissionStatus, scheduleDailyReminders } from '../utils/notificationService';
 import { BANK_LIST } from '../constants/banks';
 import { formatMonth, formatCurrencyShort, getPercentage } from '../utils/formatters';
 import { useAppDrawer } from '../context/DrawerContext';
@@ -41,6 +42,7 @@ export default function DashboardScreen({ navigation }) {
   const { fetchDebts } = useDebts();
   const { categories, fetchCategories } = useCategories();
   const { openDrawer } = useAppDrawer();
+  const { alert: showAlert } = useAlert();
   const [refreshing, setRefreshing] = useState(false);
 
   const now = new Date();
@@ -97,7 +99,14 @@ export default function DashboardScreen({ navigation }) {
         const deviceStatus = await checkPermissionStatus();
         if (deviceStatus !== 'granted') {
           setTimeout(() => setShowNotifModal(true), 2000);
+        } else {
+          // If device permission is already granted but storage is not updated, sync it
+          await storage.setNotifPermission('granted');
+          scheduleDailyReminders();
         }
+      } else if (savedStatus === 'granted') {
+        // Regularly ensure reminders are scheduled
+        scheduleDailyReminders();
       }
     };
     checkNotif();
@@ -147,6 +156,7 @@ export default function DashboardScreen({ navigation }) {
     const status = await requestNotificationPermissions();
     if (status === 'granted') {
       await storage.setNotifPermission('granted');
+      scheduleDailyReminders();
     }
     setShowNotifModal(false);
   };
@@ -257,42 +267,54 @@ export default function DashboardScreen({ navigation }) {
             <Text style={[styles.sectionLink, { color: COLORS.primary }]}>Manage</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.accountsScroll}
-          contentContainerStyle={styles.accountsScrollContent}
-        >
-          {summary?.accounts?.map((acc) => (
-            <TouchableOpacity 
-              key={acc._id} 
-              style={[styles.accCard, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}
-              onPress={() => navigation.navigate('AccountDetail', { accountId: acc._id })}
-            >
-              <View style={[styles.accIconBg, { backgroundColor: `${acc.color}18` }]}>
-                {(() => {
-                  const logoFromList = BANK_LIST.find(b => b.name === acc.bankName || b.name === acc.name)?.logo;
-                  const displayLogo = acc.bankLogo || logoFromList;
-                  
-                  if (displayLogo) {
-                    return (
-                      <Image 
-                        source={{ uri: displayLogo }} 
-                        style={styles.logoImageSmall} 
-                        resizeMode="contain"
-                      />
-                    );
-                  }
-                  return <Text style={styles.accIcon}>{acc.icon}</Text>;
-                })()}
-              </View>
-              <View>
-                <Text style={[styles.accName, { color: colors.textSecondary }]}>{acc.name}</Text>
-                <Text style={[styles.accBalance, { color: colors.textPrimary }]}>₹{acc.balance.toLocaleString()}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {summary?.accounts?.length > 0 ? (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.accountsScroll}
+            contentContainerStyle={styles.accountsScrollContent}
+          >
+            {summary.accounts.map((acc) => (
+              <TouchableOpacity 
+                key={acc._id} 
+                style={[styles.accCard, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}
+                onPress={() => navigation.navigate('AccountDetail', { accountId: acc._id })}
+              >
+                <View style={[styles.accIconBg, { backgroundColor: `${acc.color}18` }]}>
+                  {(() => {
+                    const logoFromList = BANK_LIST.find(b => b.name === acc.bankName || b.name === acc.name)?.logo;
+                    const displayLogo = acc.bankLogo || logoFromList;
+                    
+                    if (displayLogo) {
+                      return (
+                        <Image 
+                          source={{ uri: displayLogo }} 
+                          style={styles.logoImageSmall} 
+                          resizeMode="contain"
+                        />
+                      );
+                    }
+                    return <Text style={styles.accIcon}>{acc.icon}</Text>;
+                  })()}
+                </View>
+                <View>
+                  <Text style={[styles.accName, { color: colors.textSecondary }]}>
+                    {acc.isShared ? `${acc.name} (${acc.ownerName})` : `${acc.name} (You)`}
+                  </Text>
+                  <Text style={[styles.accBalance, { color: colors.textPrimary }]}>₹{acc.balance.toLocaleString()}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={{ paddingHorizontal: SCREEN_PAD, marginBottom: SPACING.lg }}>
+            <Button 
+              title="+ Add Your First Account" 
+              onPress={() => navigation.navigate('Accounts', { showAddModal: true })} 
+              style={{ height: 50 }}
+            />
+          </View>
+        )}
 
         {/* ── Wealth Quick Access ──────────────────── */}
         <View style={styles.sectionTitleRow}>
@@ -444,7 +466,7 @@ export default function DashboardScreen({ navigation }) {
               onPress={async () => {
                 const amountVal = parseFloat(reminderAmount);
                 if (isNaN(amountVal) || amountVal <= 0) {
-                  return Alert.alert('Invalid', 'Please enter a valid amount.');
+                  return showAlert('Invalid', 'Please enter a valid amount.', [], 'warning');
                 }
                 try {
                   const incomeName = currentReminderIncome?.incomeType === 'Other' ? currentReminderIncome?.customIncomeType : currentReminderIncome?.incomeType;
@@ -468,10 +490,10 @@ export default function DashboardScreen({ navigation }) {
                   await AsyncStorage.setItem(cacheKey, 'completed');
                   
                   setIncomeReminderVisible(false);
-                  Alert.alert('✅ Success', 'Income added to your account!');
+                  showAlert('✅ Success', 'Income added to your account!', [], 'success');
                   load(); // Refresh summary dashboard
                 } catch (err) {
-                  Alert.alert('Error', err.message || 'Failed to add income.');
+                  showAlert('Error', err.message || 'Failed to add income.', [], 'error');
                 }
               }}
             />

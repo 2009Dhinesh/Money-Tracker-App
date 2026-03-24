@@ -30,6 +30,8 @@ const Button = ({
     lg: { paddingVertical: SPACING.base + 2, paddingHorizontal: SPACING['2xl'], fontSize: FONT_SIZES.lg },
   };
 
+  const s = sizeStyles[size] || sizeStyles.md;
+
   const isDisabled = disabled || loading;
 
   if (variant === 'primary') {
@@ -44,14 +46,17 @@ const Button = ({
           colors={isDisabled ? ['#B0AEE8', '#C4C2F0'] : COLORS.gradientPrimary}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[styles.base, { paddingVertical: sizeStyles[size].paddingVertical }, SHADOWS.md]}
+          style={[styles.base, { paddingVertical: s.paddingVertical }, SHADOWS.md]}
         >
           {loading ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
             <View style={styles.row}>
               {icon && <View style={styles.iconLeft}>{icon}</View>}
-              <Text style={[styles.primaryText, { fontSize: sizeStyles[size].fontSize }, textStyle]}>
+              <Text
+                numberOfLines={1}
+                style={[styles.primaryText, { fontSize: s.fontSize }, textStyle]}
+              >
                 {title}
               </Text>
             </View>
@@ -97,8 +102,8 @@ const Button = ({
           backgroundColor: vs.bg,
           borderColor: vs.border,
           borderWidth: variant === 'outline' ? 1.5 : 1,
-          paddingVertical: sizeStyles[size].paddingVertical,
-          paddingHorizontal: sizeStyles[size].paddingHorizontal,
+          paddingVertical: s.paddingVertical,
+          paddingHorizontal: s.paddingHorizontal,
           opacity: isDisabled ? 0.5 : 1,
         },
         fullWidth && styles.fullWidth,
@@ -111,9 +116,10 @@ const Button = ({
         <View style={styles.row}>
           {icon && <View style={styles.iconLeft}>{icon}</View>}
           <Text
+            numberOfLines={1}
             style={[
               styles.text,
-              { color: vs.text, fontSize: sizeStyles[size].fontSize },
+              { color: vs.text, fontSize: s.fontSize },
               textStyle,
             ]}
           >

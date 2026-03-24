@@ -170,6 +170,14 @@ export default function CustomDrawerContent({ onClose }) {
           />
 
           <DrawerItem 
+            icon="people-outline" 
+            label="Family Members" 
+            onPress={() => navigateTo('FamilyMembers')} 
+            isActive={activeRouteName === 'FamilyMembers'} 
+            colors={colors} 
+          />
+
+          <DrawerItem 
             icon="trending-up-outline" 
             label="Investments" 
             onPress={() => navigateTo('Investments')} 

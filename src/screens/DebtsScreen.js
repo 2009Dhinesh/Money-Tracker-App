@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal,
-  StatusBar, Alert, TextInput, RefreshControl, Image,
+  StatusBar, TextInput, RefreshControl, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useDebts } from '../hooks/useDebts';
 import { useContacts } from '../hooks/useContacts';
 import { useAccounts } from '../hooks/useAccounts';
+import { useAlert } from '../context/AlertContext';
 import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
@@ -45,6 +46,7 @@ export default function DebtsScreen({ navigation }) {
   const { contacts, fetchContacts, addContact, editContact, removeContact } = useContacts();
   const { accounts, fetchAccounts } = useAccounts();
   const { openDrawer } = useAppDrawer();
+  const { alert: showAlert } = useAlert();
 
   const [activeTab, setActiveTab] = useState('given');
   const [statusFilter, setStatusFilter] = useState('');
@@ -118,29 +120,29 @@ export default function DebtsScreen({ navigation }) {
 
   // ── Contact Modal Save ──
   const handleSaveContact = async () => {
-    if (!cName.trim()) return Alert.alert('Error', 'Name is required');
+    if (!cName.trim()) return showAlert('Error', 'Name is required', [], 'warning');
     try {
       const data = { name: cName.trim(), phone: cPhone.trim(), relation: cRelation, note: cNote.trim(), icon: cIcon };
       if (editingContactId) {
         await editContact(editingContactId, data);
-        Alert.alert('✅', 'Contact updated');
+        showAlert('✅', 'Contact updated', [], 'success');
       } else {
         await addContact(data);
-        Alert.alert('✅', 'Contact added');
+        showAlert('✅', 'Contact added', [], 'success');
       }
       setShowContactModal(false);
       setEditingContactId(null);
       setCName(''); setCPhone(''); setCRelation('friend'); setCNote(''); setCIcon('👤');
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const handleDeleteContact = (id, name) => {
-    Alert.alert('Delete Contact', `Remove "${name}"?`, [
+    showAlert('Delete Contact', `Remove "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
-        try { await removeContact(id); } catch (err) { Alert.alert('Error', err.message); }
+        try { await removeContact(id); } catch (err) { showAlert('Error', err.message, [], 'error'); }
       }},
-    ]);
+    ], 'warning');
   };
 
   // ── Repayment Modal ──
@@ -157,8 +159,8 @@ export default function DebtsScreen({ navigation }) {
 
   const handleRepayment = async () => {
     const amt = parseFloat(repayAmount);
-    if (!amt || amt <= 0) return Alert.alert('Error', 'Enter valid amount');
-    if (amt > repayDebt.remainingAmount) return Alert.alert('Error', `Max ₹${repayDebt.remainingAmount}`);
+    if (!amt || amt <= 0) return showAlert('Error', 'Enter valid amount', [], 'warning');
+    if (amt > repayDebt.remainingAmount) return showAlert('Error', `Max ₹${repayDebt.remainingAmount}`, [], 'warning');
     try {
       await recordRepayment(repayDebt._id, {
         amount: amt,
@@ -170,15 +172,15 @@ export default function DebtsScreen({ navigation }) {
       });
       setShowRepayModal(false);
       await loadAll();
-      Alert.alert('✅', 'Repayment recorded');
-    } catch (err) { Alert.alert('Error', err.message); }
+      showAlert('✅', 'Repayment recorded', [], 'success');
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const handleDelete = (id) => {
-    Alert.alert('Delete Record', 'This will reverse all account impacts. Continue?', [
+    showAlert('Delete Record', 'This will reverse all account impacts. Continue?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => { await removeDebt(id); await loadAll(); }},
-    ]);
+    ], 'warning');
   };
 
   const isOverdue = (debt) => debt.dueDate && new Date(debt.dueDate) < new Date() && debt.status !== 'completed';

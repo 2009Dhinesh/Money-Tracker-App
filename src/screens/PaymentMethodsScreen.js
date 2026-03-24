@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Modal, FlatList,
+  StatusBar, Modal, FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
-import { useAppDrawer } from '../context/DrawerContext';
+import { useAlert } from '../context/AlertContext';
+
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -23,7 +24,8 @@ const COLORS_LIST = [
 export default function PaymentMethodsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { paymentMethods, loading, fetchPaymentMethods, addPaymentMethod, editPaymentMethod, removePaymentMethod } = usePaymentMethods();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
   
   const [modalVisible, setModalVisible] = useState(false);
   const [editingMethod, setEditingMethod] = useState(null);
@@ -78,15 +80,15 @@ export default function PaymentMethodsScreen({ navigation }) {
     try {
       if (editingMethod) {
         await editPaymentMethod(editingMethod._id, form);
-        Alert.alert('Success', 'Payment method updated');
+        showAlert('Success', 'Payment method updated', [], 'success');
       } else {
         await addPaymentMethod(form);
-        Alert.alert('Success', 'Payment method added');
+        showAlert('Success', 'Payment method added', [], 'success');
       }
       fetchPaymentMethods();
       closeModal();
     } catch (err) {
-      Alert.alert('Error', err.message || 'Action failed');
+      showAlert('Error', err.message || 'Action failed', [], 'error');
     } finally {
       setSaving(false);
     }
@@ -94,11 +96,11 @@ export default function PaymentMethodsScreen({ navigation }) {
 
   const handleDelete = (id, isDefault) => {
     if (isDefault) {
-      Alert.alert('System Method', 'Default payment methods cannot be deleted.');
+      showAlert('System Method', 'Default payment methods cannot be deleted.', [], 'warning');
       return;
     }
 
-    Alert.alert('Delete Method', 'Delete this payment method?', [
+    showAlert('Delete Method', 'Delete this payment method?', [
       { text: 'Cancel', style: 'cancel' },
       { 
         text: 'Delete', 
@@ -108,11 +110,11 @@ export default function PaymentMethodsScreen({ navigation }) {
             await removePaymentMethod(id);
             fetchPaymentMethods();
           } catch (err) {
-            Alert.alert('Error', err.message);
+            showAlert('Error', err.message, [], 'error');
           }
         } 
       },
-    ]);
+    ], 'warning');
   };
 
   const renderMethod = ({ item }) => (
@@ -149,8 +151,8 @@ export default function PaymentMethodsScreen({ navigation }) {
       
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Payment Methods</Text>
         <TouchableOpacity onPress={() => openModal()} style={styles.headerRight}>

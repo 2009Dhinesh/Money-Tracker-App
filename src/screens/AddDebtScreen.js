@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StatusBar, Alert, TextInput, Image, Modal,
+  KeyboardAvoidingView, Platform, StatusBar, TextInput, Image, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -10,6 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useDebts } from '../hooks/useDebts';
 import { useContacts } from '../hooks/useContacts';
 import { useAccounts } from '../hooks/useAccounts';
+import { useAlert } from '../context/AlertContext';
 import Button from '../components/Button';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
@@ -37,6 +38,7 @@ export default function AddDebtScreen({ navigation }) {
   const { addDebt } = useDebts();
   const { contacts, fetchContacts, addContact } = useContacts();
   const { accounts, fetchAccounts } = useAccounts();
+  const { alert: showAlert } = useAlert();
 
   const [type, setType] = useState('given');
   const [amount, setAmount] = useState('');
@@ -75,14 +77,14 @@ export default function AddDebtScreen({ navigation }) {
   };
 
   const handleSaveContact = async () => {
-    if (!cName.trim()) return Alert.alert('Error', 'Name is required');
+    if (!cName.trim()) return showAlert('Error', 'Name is required', [], 'warning');
     try {
       const data = { name: cName.trim(), phone: cPhone.trim(), relation: cRelation, note: cNote.trim(), icon: cIcon };
       const newContact = await addContact(data);
       if (newContact) setSelectedContact(newContact._id);
       setShowContactModal(false);
       setCName(''); setCPhone(''); setCRelation('friend'); setCNote(''); setCIcon('👤');
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const handleSave = async () => {
@@ -103,16 +105,16 @@ export default function AddDebtScreen({ navigation }) {
       });
 
       if (res.budgetMessage) {
-        sendInstantNotification('⚠️ Account Limit Alert!', res.budgetMessage.message);
-        Alert.alert('Limit Alert ⚠️', res.budgetMessage.message, [
+        // sendInstantNotification('⚠️ Account Limit Alert!', res.budgetMessage.message);
+        showAlert('Limit Alert ⚠️', res.budgetMessage.message, [
           { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
+        ], 'warning');
       } else {
-        Alert.alert('✅', `${type === 'given' ? 'Lending' : 'Borrowing'} recorded`);
+        showAlert('✅', `${type === 'given' ? 'Lending' : 'Borrowing'} recorded`, [], 'success');
         navigation.goBack();
       }
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, [], 'error');
     } finally { setSaving(false); }
   };
 
@@ -123,7 +125,7 @@ export default function AddDebtScreen({ navigation }) {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>New Record</Text>
       </View>

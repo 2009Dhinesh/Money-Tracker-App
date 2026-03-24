@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, Modal, TextInput, Alert, Dimensions,
+  RefreshControl, Modal, TextInput, Dimensions,
   KeyboardAvoidingView, Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useGoals } from '../hooks/useGoals';
-import { useAppDrawer } from '../context/DrawerContext';
+import { useAlert } from '../context/AlertContext';
+
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import EmptyState from '../components/EmptyState';
 import Button from '../components/Button';
@@ -21,10 +22,11 @@ import { Image } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
-export default function GoalsScreen() {
+export default function GoalsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { goals, loading, fetchGoals, addGoal, addFunds, withdrawFunds, deleteGoal } = useGoals();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [fundingModalVisible, setFundingModalVisible] = useState(false);
@@ -65,7 +67,7 @@ export default function GoalsScreen() {
 
   const handleCreateGoal = async () => {
     if (!title || !targetAmount) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      showAlert('Error', 'Please fill in all required fields', [], 'warning');
       return;
     }
     try {
@@ -75,13 +77,13 @@ export default function GoalsScreen() {
       setTargetAmount('');
       setCategory('saving');
     } catch (error) {
-      Alert.alert('Error', 'Failed to create goal');
+      showAlert('Error', 'Failed to create goal', [], 'error');
     }
   };
 
   const handleFundAction = async () => {
     if (!fundAmount || !selectedGoal || !selectedAccount || !selectedPaymentMethod) {
-      Alert.alert('Error', 'Please select account and payment method');
+      showAlert('Error', 'Please select account and payment method', [], 'warning');
       return;
     }
 
@@ -90,15 +92,16 @@ export default function GoalsScreen() {
     if (fundMode === 'add') {
       const selectedAccDetails = accounts.find(a => a._id === selectedAccount);
       if (selectedAccDetails && amount > selectedAccDetails.balance) {
-        Alert.alert(
+        showAlert(
           'Insufficient Balance', 
-          `The selected account does not have enough funds. Available balance is ₹${selectedAccDetails.balance.toLocaleString()}.`
+          `The selected account does not have enough funds. Available balance is ₹${selectedAccDetails.balance.toLocaleString()}.`,
+          [], 'warning'
         );
         return;
       }
     } else {
       if (amount > selectedGoal.currentAmount) {
-        Alert.alert('Error', `Cannot withdraw more than current goal amount (₹${selectedGoal.currentAmount.toLocaleString()})`);
+        showAlert('Error', `Cannot withdraw more than current goal amount (₹${selectedGoal.currentAmount.toLocaleString()})`, [], 'error');
         return;
       }
     }
@@ -123,28 +126,29 @@ export default function GoalsScreen() {
         );
         // Also show an Alert for better visibility if they're in the app
         setTimeout(() => {
-          Alert.alert('Limit Alert ⚠️', res.budgetMessage.message);
+          showAlert('Limit Alert ⚠️', res.budgetMessage.message, [], 'warning');
         }, 500);
       }
 
       if (fundMode === 'withdraw') {
         setTimeout(() => {
-          Alert.alert('Don\'t give up!', 'Don\'t give up on your savings journey! Next time you will do it.');
+          showAlert('Don\'t give up!', 'Don\'t give up on your savings journey! Next time you will do it.', [], 'info');
         }, 500);
       }
     } catch (error) {
-      Alert.alert('Error', error.message || `Failed to ${fundMode} funds`);
+      showAlert('Error', error.message || `Failed to ${fundMode} funds`, [], 'error');
     }
   };
 
   const handleDelete = (id) => {
-    Alert.alert(
+    showAlert(
       'Delete Goal',
       'Are you sure you want to delete this goal?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => deleteGoal(id) }
-      ]
+      ],
+      'warning'
     );
   };
 
@@ -157,8 +161,8 @@ export default function GoalsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Savings Goals</Text>
         <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.headerRight}>

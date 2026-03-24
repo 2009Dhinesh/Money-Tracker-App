@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Modal, Image
+  StatusBar, Modal, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { useAccounts } from '../hooks/useAccounts';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -24,14 +25,16 @@ const ACCOUNT_TYPES = [
 
 const PRESET_COLORS = ['#27AE60', '#2F80ED', '#9B51E0', '#EB5757', '#F2994A', '#6C63FF'];
 
-export default function AccountsScreen({ navigation }) {
+export default function AccountsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
   const { accounts, fetchAccounts, addAccount, editAccount, archiveAccount, removeAccount, loading } = useAccounts();
   const { openDrawer } = useAppDrawer();
+  const { alert: showAlert, showSnackbar } = useAlert();
   
   const [modalVisible, setModalVisible] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [currentId, setCurrentId] = useState(null);
+  const [pendingDeletionId, setPendingDeletionId] = useState(null);
 
   const [name, setName] = useState('');
   const [type, setType] = useState('cash');
@@ -50,7 +53,17 @@ export default function AccountsScreen({ navigation }) {
   
   const [otherPersons, setOtherPersons] = useState([]); // [{ name, amount }]
 
-  useEffect(() => { fetchAccounts(); }, []);
+  useEffect(() => { 
+    fetchAccounts(); 
+  }, []);
+
+  useEffect(() => {
+    if (route.params?.showAddModal) {
+      handleOpenAdd();
+      // Clear the param so it doesn't reopen on every focus
+      navigation.setParams({ showAddModal: false });
+    }
+  }, [route.params?.showAddModal]);
 
   const resetForm = () => {
     setName('');
@@ -79,6 +92,9 @@ export default function AccountsScreen({ navigation }) {
 
   const isAccountsEmpty = accounts.length === 0;
   const handleOpenEdit = (acc) => {
+    if (acc.isShared) {
+      return showAlert('Shared Account', 'You cannot edit this account. It is shared by ' + (acc.ownerName || 'a family member') + '.', [], 'info');
+    }
     setName(acc.name);
     setType(acc.type);
     setBankName(acc.bankName || '');
@@ -106,13 +122,13 @@ export default function AccountsScreen({ navigation }) {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) return Alert.alert('Error', 'Name is required');
-    if (type === 'bank' && !showNewBankInput && !bankName) return Alert.alert('Error', 'Please select a bank');
-    if (type === 'bank' && showNewBankInput && !newBankName.trim()) return Alert.alert('Error', 'Bank name is required');
+    if (!name.trim()) return showAlert('Error', 'Name is required', [], 'error');
+    if (type === 'bank' && !showNewBankInput && !bankName) return showAlert('Error', 'Please select a bank', [], 'warning');
+    if (type === 'bank' && showNewBankInput && !newBankName.trim()) return showAlert('Error', 'Bank name is required', [], 'warning');
     
     try {
       const finalType = showTypeInput ? customType.toLowerCase() : type;
-      if (showTypeInput && !customType.trim()) return Alert.alert('Error', 'Custom type name is required');
+      if (showTypeInput && !customType.trim()) return showAlert('Error', 'Custom type name is required', [], 'warning');
 
         let resolvedBankName = type === 'bank' ? (showNewBankInput ? newBankName.trim() : bankName) : '';
         
@@ -151,41 +167,61 @@ export default function AccountsScreen({ navigation }) {
       setModalVisible(false);
       resetForm();
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, [], 'error');
     }
   };
 
   const handleDelete = (id) => {
-    Alert.alert(
-      'Remove Account',
-      'How would you like to remove this account? Archiving keeps your records, deleting removes everything.',
-      [
+    showAlert({
+      title: 'Remove Account',
+      message: 'How would you like to remove this account? Archiving keeps your records, deleting removes everything.',
+      type: 'warning',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Archive (Recommended)', 
+          text: 'Archive', 
           onPress: async () => {
             try {
               await archiveAccount(id);
-              Alert.alert('Success', 'Account archived. You can find it in "Deleted Accounts" in the menu.');
+              showAlert('Success', 'Account archived. You can find it in "Deleted Accounts".', [], 'success');
             } catch (err) {
-              Alert.alert('Error', err.message);
+              showAlert('Error', err.message, [], 'error');
             }
           }
         },
         { 
-          text: 'Delete All Records', 
+          text: 'Delete All', 
           style: 'destructive', 
-          onPress: async () => {
-            try {
-              await removeAccount(id);
-              Alert.alert('Success', 'Account and records deleted permanently.');
-            } catch (err) {
-              Alert.alert('Delete Failed', err.response?.data?.message || err.message || 'Could not delete.');
-            }
+          onPress: () => {
+            // Optimistic Update: Remove from UI immediately
+            setPendingDeletionId(id);
+            
+            showSnackbar({
+              message: 'Deleting account and all records...',
+              actionText: 'Undo',
+              duration: 5000,
+              onAction: () => {
+                // Restore account to list
+                setPendingDeletionId(null);
+                showAlert('Restored', 'Deletion cancelled.', [], 'success');
+              },
+              onDismiss: async () => {
+                try {
+                  // Final deletion on server
+                  await removeAccount(id);
+                } catch (err) {
+                  // If server delete fails, restore it
+                  setPendingDeletionId(null);
+                  showAlert('Delete Failed', err.response?.data?.message || err.message || 'Could not delete.', [], 'error');
+                } finally {
+                  setPendingDeletionId(null);
+                }
+              }
+            });
           } 
         },
       ]
-    );
+    });
   };
 
   return (
@@ -203,8 +239,8 @@ export default function AccountsScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {accounts.length > 0 ? (
-          accounts.map((acc) => (
+        {accounts.filter(acc => acc._id !== pendingDeletionId).length > 0 ? (
+          accounts.filter(acc => acc._id !== pendingDeletionId).map((acc) => (
             <TouchableOpacity 
               key={acc._id} 
               onPress={() => handleOpenEdit(acc)}
@@ -224,7 +260,7 @@ export default function AccountsScreen({ navigation }) {
               <View style={styles.cardInfo}>
                 <Text style={[styles.name, { color: colors.textPrimary }]}>{acc.name}</Text>
                 <Text style={[styles.type, { color: colors.textSecondary }]}>
-                  {acc.type.toUpperCase()}{acc.bankName ? ` • ${acc.bankName}` : ''}
+                  {acc.isShared ? `Shared by ${acc.ownerName}` : `${acc.type.toUpperCase()} (You)${acc.bankName ? ` • ${acc.bankName}` : ''}`}
                 </Text>
                 {acc.monthlyLimit > 0 && (
                   <Text style={{ fontSize: 11, color: COLORS.expense, fontWeight: '700', marginTop: 2 }}>
@@ -235,9 +271,11 @@ export default function AccountsScreen({ navigation }) {
               <View style={styles.cardBalance}>
                 <Text style={[styles.balanceNum, { color: colors.textPrimary }]}>₹{acc.balance.toLocaleString()}</Text>
                 <View style={styles.actions}>
-                  <TouchableOpacity onPress={() => handleDelete(acc._id)} style={styles.actionBtn}>
-                    <Ionicons name="trash-outline" size={18} color={COLORS.expense} />
-                  </TouchableOpacity>
+                  {!acc.isShared && (
+                    <TouchableOpacity onPress={() => handleDelete(acc._id)} style={styles.actionBtn}>
+                      <Ionicons name="trash-outline" size={18} color={COLORS.expense} />
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </TouchableOpacity>

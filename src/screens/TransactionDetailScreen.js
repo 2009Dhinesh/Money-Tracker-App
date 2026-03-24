@@ -1,11 +1,12 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions, Alert, Image
+  StatusBar, Dimensions, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useTransactions } from '../hooks/useTransactions';
+import { useAlert } from '../context/AlertContext';
 import { formatCurrency, formatDate, formatTime } from '../utils/formatters';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
@@ -16,6 +17,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
   const { transaction } = route.params || {};
   const { colors, isDark } = useTheme();
   const { removeTransaction } = useTransactions();
+  const { alert: showAlert } = useAlert();
 
   if (!transaction) return null;
 
@@ -25,7 +27,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
   const pm = transaction.paymentMethod;
 
   const handleDelete = () => {
-    Alert.alert('Delete Transaction', 'Are you sure you want to delete this transaction?', [
+    showAlert('Delete Transaction', 'Are you sure you want to delete this transaction?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -35,7 +37,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
           navigation.goBack();
         },
       },
-    ]);
+    ], 'warning');
   };
 
   const DetailRow = ({ icon, label, value, subValue, color, image, emoji }) => (
@@ -73,7 +75,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
           onPress={() => navigation.goBack()}
           style={styles.menuIconWrap}
         >
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Transaction Details</Text>
         <TouchableOpacity

@@ -1,13 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal,
-  StatusBar, Alert, TextInput, RefreshControl,
+  StatusBar, TextInput, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useGold } from '../hooks/useGold';
-import { useAppDrawer } from '../context/DrawerContext';
+import { useAlert } from '../context/AlertContext';
+
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
@@ -26,7 +27,8 @@ const PURITIES = ['24K', '22K', '18K', '14K'];
 export default function GoldScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { assets, summary, livePrice, loading, fetchAssets, addAsset, removeAsset, calculate } = useGold();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -55,8 +57,8 @@ export default function GoldScreen({ navigation }) {
   };
 
   const handleAdd = async () => {
-    if (!gWeight || parseFloat(gWeight) <= 0) return Alert.alert('Error', 'Enter valid weight');
-    if (!gPrice || parseFloat(gPrice) <= 0) return Alert.alert('Error', 'Enter purchase price');
+    if (!gWeight || parseFloat(gWeight) <= 0) return showAlert('Error', 'Enter valid weight', [], 'warning');
+    if (!gPrice || parseFloat(gPrice) <= 0) return showAlert('Error', 'Enter purchase price', [], 'warning');
     try {
       await addAsset({
         name: gName.trim() || 'Gold',
@@ -69,8 +71,8 @@ export default function GoldScreen({ navigation }) {
       });
       setShowAddModal(false);
       resetForm();
-      Alert.alert('✅', 'Gold asset added!');
-    } catch (err) { Alert.alert('Error', err.message); }
+      showAlert('✅', 'Gold asset added!', [], 'success');
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const handleCalc = async () => {
@@ -78,14 +80,14 @@ export default function GoldScreen({ navigation }) {
     try {
       const res = await calculate(calcAmount, calcPurity);
       setCalcResult(res);
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const handleDelete = (id, name) => {
-    Alert.alert('Delete', `Remove "${name}"?`, [
+    showAlert('Delete', `Remove "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => removeAsset(id) },
-    ]);
+    ], 'warning');
   };
 
   if (loading && !refreshing && assets.length === 0) return <LoadingSpinner message="Loading gold assets..." />;
@@ -99,8 +101,8 @@ export default function GoldScreen({ navigation }) {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Gold Assets</Text>
         <View style={styles.headerRight}>

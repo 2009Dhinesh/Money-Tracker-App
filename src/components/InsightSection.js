@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useInsights } from '../hooks/useInsights';
@@ -7,7 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
-const InsightSection = () => {
+const InsightSection = memo(() => {
   const { colors } = useTheme();
   const { insights, fetchInsights, loading } = useInsights();
 
@@ -61,7 +61,7 @@ const InsightSection = () => {
       </ScrollView>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: { marginBottom: SPACING.xl },

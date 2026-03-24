@@ -1,13 +1,14 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Image, Alert
+  StatusBar, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useAccounts } from '../hooks/useAccounts';
-import { useAppDrawer } from '../context/DrawerContext';
+import { useAlert } from '../context/AlertContext';
+
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -15,7 +16,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 export default function DeletedAccountsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { archivedAccounts, fetchArchivedAccounts, unarchiveAccount, removeAccount, loading } = useAccounts();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
 
   useFocusEffect(
     useCallback(() => {
@@ -24,7 +26,7 @@ export default function DeletedAccountsScreen({ navigation }) {
   );
 
   const handleRestore = (id) => {
-    Alert.alert(
+    showAlert(
       'Restore Account',
       'This will move the account back to your active accounts list.',
       [
@@ -34,18 +36,19 @@ export default function DeletedAccountsScreen({ navigation }) {
           onPress: async () => {
             try {
               await unarchiveAccount(id);
-              Alert.alert('Success', 'Account restored!');
+              showAlert('Success', 'Account restored!', [], 'success');
             } catch (err) {
-              Alert.alert('Error', err.message);
+              showAlert('Error', err.message, [], 'error');
             }
           }
         }
-      ]
+      ],
+      'info'
     );
   };
 
   const handlePermanentDelete = (id) => {
-    Alert.alert(
+    showAlert(
       'Permanent Delete',
       'Warning: This will delete ALL transactions linked to this account. This action cannot be undone.',
       [
@@ -56,13 +59,14 @@ export default function DeletedAccountsScreen({ navigation }) {
           onPress: async () => {
             try {
               await removeAccount(id);
-              Alert.alert('Success', 'Account and records deleted forever.');
+              showAlert('Success', 'Account and records deleted forever.', [], 'success');
             } catch (err) {
-              Alert.alert('Error', err.response?.data?.message || err.message);
+              showAlert('Error', err.response?.data?.message || err.message, [], 'error');
             }
           }
         }
-      ]
+      ],
+      'warning'
     );
   };
 
@@ -73,8 +77,8 @@ export default function DeletedAccountsScreen({ navigation }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
 
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Deleted Accounts</Text>
       </View>

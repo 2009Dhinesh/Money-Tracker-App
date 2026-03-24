@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+// Rebuilding after Family feature addition
+import { NavigationContainer } from '@react-navigation/native'; // Trigger Re-bundle 2
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,10 @@ import WealthDashboardScreen from '../screens/WealthDashboardScreen';
 import GoalsScreen from '../screens/GoalsScreen';
 import InvestmentsScreen from '../screens/InvestmentsScreen';
 import InvestmentDetailScreen from '../screens/InvestmentDetailScreen';
+import FamilyMemberScreen from '../screens/FamilyMemberScreen';
+import FamilySetupScreen from '../screens/FamilySetupScreen';
+import FamilyReportScreen from '../screens/FamilyReportScreen';
+import PermissionSetupScreen from '../screens/PermissionSetupScreen';
 import BiometricGuard from '../components/BiometricGuard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import GlassStatusBar from '../components/GlassStatusBar';
@@ -72,7 +77,7 @@ const attachCommonScreens = (StackNav) => (
     <StackNav.Screen name="Goals" component={GoalsScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="Investments" component={InvestmentsScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="InvestmentDetail" component={InvestmentDetailScreen} options={{ animation: 'slide_from_right' }} />
-    <StackNav.Screen name="Analysis" component={ReportsScreen} options={{ animation: 'slide_from_right' }} />
+    <StackNav.Screen name="DetailedAnalysis" component={ReportsScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="Categories" component={CategoriesScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="AccountDetail" component={AccountDetailScreen} options={{ animation: 'slide_from_right' }} />
     <StackNav.Screen name="DeletedAccounts" component={DeletedAccountsScreen} options={{ animation: 'slide_from_right' }} />
@@ -261,6 +266,10 @@ const AppStack = () => (
     <Stack.Screen name="WealthDashboard" component={WealthDashboardScreen} options={{ animation: 'slide_from_right' }} />
     <Stack.Screen name="Investments" component={InvestmentsScreen} options={{ animation: 'slide_from_right' }} />
     <Stack.Screen name="Goals" component={GoalsScreen} options={{ animation: 'slide_from_right' }} />
+    <Stack.Screen name="FamilyMembers" component={FamilyMemberScreen} options={{ animation: 'slide_from_right' }} />
+    <Stack.Screen name="FamilySetup" component={FamilySetupScreen} options={{ animation: 'slide_from_right' }} />
+    <Stack.Screen name="FamilyReport" component={FamilyReportScreen} options={{ animation: 'slide_from_right' }} />
+    <Stack.Screen name="PermissionSetup" component={PermissionSetupScreen} options={{ animation: 'slide_from_right' }} />
   </Stack.Navigator>
 );
 // ─── Root Navigator ──────────────────────────────────────────

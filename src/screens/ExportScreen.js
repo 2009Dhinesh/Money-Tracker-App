@@ -7,14 +7,14 @@ import {
   ScrollView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   Modal,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../context/ThemeContext';
-import { useAppDrawer } from '../context/DrawerContext';
+import { useAlert } from '../context/AlertContext';
+
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import wealthApi from '../api/wealthApi';
 import transactionApi from '../api/transactionApi';
@@ -29,7 +29,8 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function ExportScreen({ navigation }) {
   const { colors, isDark } = useTheme();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
   
   // States
   const [loading, setLoading] = useState(null); 
@@ -108,7 +109,7 @@ export default function ExportScreen({ navigation }) {
         setShowModal(false);
       }
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showAlert('Error', error.message, [], 'error');
     } finally {
       setLoading(null);
     }
@@ -124,7 +125,7 @@ export default function ExportScreen({ navigation }) {
         setShowModal(false);
       }
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showAlert('Error', error.message, [], 'error');
     } finally {
       setLoading(null);
     }
@@ -205,8 +206,8 @@ export default function ExportScreen({ navigation }) {
       
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Export Data</Text>
       </View>

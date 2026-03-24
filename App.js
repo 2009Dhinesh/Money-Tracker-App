@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 
 import { AuthProvider } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { AlertProvider } from './src/context/AlertContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { BackHandler } from 'react-native';
 
@@ -18,14 +19,16 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <AppNavigator />
-            <Toast
-              position="bottom"
-              bottomOffset={90}
-              visibilityTime={3000}
-            />
-          </AuthProvider>
+          <AlertProvider>
+            <AuthProvider>
+              <AppNavigator />
+              <Toast
+                position="bottom"
+                bottomOffset={90}
+                visibilityTime={3000}
+              />
+            </AuthProvider>
+          </AlertProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

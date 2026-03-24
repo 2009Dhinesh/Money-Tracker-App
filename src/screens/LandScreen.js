@@ -1,13 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal,
-  StatusBar, Alert, TextInput, RefreshControl,
+  StatusBar, TextInput, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useLand } from '../hooks/useLand';
-import { useAppDrawer } from '../context/DrawerContext';
+import { useAlert } from '../context/AlertContext';
+
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
@@ -33,7 +34,8 @@ const AREA_UNITS = [
 export default function LandScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { assets, summary, loading, fetchAssets, addAsset, updateAsset, removeAsset } = useLand();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -60,8 +62,8 @@ export default function LandScreen({ navigation }) {
   };
 
   const handleAdd = async () => {
-    if (!lName.trim()) return Alert.alert('Error', 'Property name required');
-    if (!lPrice || parseFloat(lPrice) <= 0) return Alert.alert('Error', 'Enter purchase price');
+    if (!lName.trim()) return showAlert('Error', 'Property name required', [], 'warning');
+    if (!lPrice || parseFloat(lPrice) <= 0) return showAlert('Error', 'Enter purchase price', [], 'warning');
     try {
       await addAsset({
         name: lName.trim(), type: lType, location: lLocation.trim(),
@@ -70,8 +72,8 @@ export default function LandScreen({ navigation }) {
         registrationNo: lRegNo.trim(), note: lNote.trim(),
       });
       setShowAddModal(false); resetForm();
-      Alert.alert('✅', 'Property added!');
-    } catch (err) { Alert.alert('Error', err.message); }
+      showAlert('✅', 'Property added!', [], 'success');
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const openEditValue = (asset) => {
@@ -81,19 +83,19 @@ export default function LandScreen({ navigation }) {
   };
 
   const handleUpdateValue = async () => {
-    if (!lCurrentVal || parseFloat(lCurrentVal) <= 0) return Alert.alert('Error', 'Enter valid value');
+    if (!lCurrentVal || parseFloat(lCurrentVal) <= 0) return showAlert('Error', 'Enter valid value', [], 'warning');
     try {
       await updateAsset(editingId, { currentValue: parseFloat(lCurrentVal) });
       setShowEditModal(false); setEditingId(null);
-      Alert.alert('✅', 'Value updated!');
-    } catch (err) { Alert.alert('Error', err.message); }
+      showAlert('✅', 'Value updated!', [], 'success');
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const handleDelete = (id, name) => {
-    Alert.alert('Delete', `Remove "${name}"?`, [
+    showAlert('Delete', `Remove "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => removeAsset(id) },
-    ]);
+    ], 'warning');
   };
 
   if (loading && !refreshing && assets.length === 0) return <LoadingSpinner message="Loading properties..." />;
@@ -106,8 +108,8 @@ export default function LandScreen({ navigation }) {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>🏡 Properties</Text>
         <TouchableOpacity onPress={() => setShowAddModal(true)} style={styles.headerRight}>

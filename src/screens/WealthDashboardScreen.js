@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
-import { useAppDrawer } from '../context/DrawerContext';
+
 import wealthApi from '../api/wealthApi';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -15,7 +15,7 @@ const WIDTH = Dimensions.get('window').width;
 
 export default function WealthDashboardScreen({ navigation }) {
   const { colors, isDark } = useTheme();
-  const { openDrawer } = useAppDrawer();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,8 +58,8 @@ export default function WealthDashboardScreen({ navigation }) {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>💰 Wealth Overview</Text>
       </View>

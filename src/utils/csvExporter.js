@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 /**
  * Converts a list of transactions to CSV content
@@ -159,6 +159,6 @@ export const exportToExcel = async (csvContent, fileName = 'Financial_Report') =
     });
   } catch (error) {
     console.error('Export Error:', error);
-    Alert.alert('Export Failed', 'An error occurred while generating the file.');
+    throw error; // Let UI handle the error alert
   }
 };

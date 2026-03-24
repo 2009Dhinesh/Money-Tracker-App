@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import debtApi from '../api/debtApi';
+import { useAlert } from '../context/AlertContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { BANK_LIST } from '../constants/banks';
 
@@ -15,6 +16,7 @@ const STATUS_CONFIG = {
 export default function DebtDetailScreen({ navigation, route }) {
   const { debtId } = route.params;
   const { colors, isDark } = useTheme();
+  const { alert: showAlert } = useAlert();
   const [debt, setDebt] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +24,7 @@ export default function DebtDetailScreen({ navigation, route }) {
     try {
       const res = await debtApi.getDebt(debtId);
       setDebt(res.debt);
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
     finally { setLoading(false); }
   };
 
@@ -53,7 +55,7 @@ export default function DebtDetailScreen({ navigation, route }) {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Debt Details</Text>
       </View>

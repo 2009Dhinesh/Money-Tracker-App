@@ -12,6 +12,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useAlert } from '../context/AlertContext';
 import { useAppDrawer } from '../context/DrawerContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import { formatCurrency, getBudgetStatusColor } from '../utils/formatters';
@@ -36,6 +37,8 @@ export default function BudgetScreen({ navigation }) {
   });
   const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const { alert: showAlert } = useAlert();
 
   useFocusEffect(
     useCallback(() => {
@@ -100,17 +103,22 @@ export default function BudgetScreen({ navigation }) {
       closeModal();
       fetchBudgets({ month, year });
     } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to save budget');
+      showAlert('Error', err.message || 'Failed to save budget', [], 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (id) => {
-    Alert.alert('Delete Budget', 'Remove this budget limit?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => removeBudget(id) },
-    ]);
+    showAlert(
+      'Delete Budget',
+      'Are you sure you want to remove this budget limit?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => removeBudget(id) },
+      ],
+      'warning'
+    );
   };
 
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -264,23 +272,19 @@ export default function BudgetScreen({ navigation }) {
               {editingBudget ? 'Edit Budget' : 'Set Budget'}
             </Text>
 
-            {/* Category Picker */}
+            {/* Category Picker (Modal Style) */}
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: SPACING.base }}>
-              {expenseCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat._id}
-                  style={[
-                    styles.catChip,
-                    { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                    form.category === cat._id && { backgroundColor: `${cat.color}22`, borderColor: cat.color, borderWidth: 2 },
-                  ]}
-                  onPress={() => setForm((f) => ({ ...f, category: cat._id }))}
-                >
-                  <Text style={[styles.catChipText, { color: form.category === cat._id ? cat.color : colors.textSecondary }]}>{cat.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <TouchableOpacity 
+              style={[styles.pickerButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
+              onPress={() => setCategoryModalVisible(true)}
+            >
+              <View style={styles.pickerContent}>
+                <Text style={[styles.pickerText, { color: form.category ? colors.textPrimary : colors.textTertiary }]}>
+                  {form.category ? expenseCategories.find(c => c._id === form.category)?.name : 'Select Category'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
             {formErrors.category && <Text style={styles.fieldError}>{formErrors.category}</Text>}
 
             {/* Period Toggle */}
@@ -326,6 +330,49 @@ export default function BudgetScreen({ navigation }) {
               <Button title="Cancel" onPress={closeModal} variant="outline" style={{ flex: 1 }} />
               <Button title={editingBudget ? 'Update' : 'Save'} onPress={handleSave} loading={saving} style={{ flex: 1 }} />
             </View>
+          </View>
+        </View>
+      </Modal>
+      {/* Category Selection Modal */}
+      <Modal
+        visible={categoryModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setCategoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface, maxHeight: '70%' }]}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Select Category</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {expenseCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat._id}
+                  style={[
+                    styles.modalOption,
+                    form.category === cat._id && { backgroundColor: `${COLORS.primary}15` }
+                  ]}
+                  onPress={() => {
+                    setForm(f => ({ ...f, category: cat._id }));
+                    setCategoryModalVisible(false);
+                  }}
+                >
+                  <View style={[styles.optionIcon, { backgroundColor: `${cat.color}15` }]}>
+                    <Text style={{ fontSize: 20 }}>{cat.icon}</Text>
+                  </View>
+                  <Text style={[styles.optionText, { color: colors.textPrimary }]}>{cat.name}</Text>
+                  {form.category === cat._id && (
+                    <Ionicons name="checkmark-sharp" size={20} color={COLORS.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <Button 
+              title="Close" 
+              variant="outline" 
+              onPress={() => setCategoryModalVisible(false)}
+              style={{ marginTop: SPACING.lg }}
+            />
           </View>
         </View>
       </Modal>
@@ -414,4 +461,44 @@ const styles = StyleSheet.create({
   },
   catChipText: { fontSize: FONT_SIZES.sm, fontWeight: '500' },
   modalActions: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.sm },
+  pickerButton: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    marginBottom: SPACING.lg,
+  },
+  pickerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pickerText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: RADIUS.lg,
+    marginBottom: SPACING.xs,
+  },
+  optionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  optionText: {
+    flex: 1,
+    fontSize: FONT_SIZES.base,
+    fontWeight: '600',
+  },
+  currencyRow: {
+    flexDirection: 'row',
+    marginBottom: SPACING.lg,
+  },
 });

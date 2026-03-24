@@ -73,7 +73,7 @@ export default function AccountDetailScreen({ navigation, route }) {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Account Details</Text>
       </View>
@@ -108,7 +108,9 @@ export default function AccountDetailScreen({ navigation, route }) {
           </View>
           
           <Text style={styles.accountName}>{account?.name}</Text>
-          <Text style={styles.bankNameText}>{account?.bankName || 'Personal Account'}</Text>
+          <Text style={styles.bankNameText}>
+            {account?.isShared ? `Owner: ${account.ownerName || 'Family Member'}` : (account?.bankName || 'Personal Account')}
+          </Text>
           
           <View style={styles.heroStatsRow}>
             <View style={styles.balanceContainer}>
@@ -153,8 +155,8 @@ export default function AccountDetailScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* Action Buttons - Hidden for Archived */}
-        {!account?.isArchived && (
+        {/* Action Buttons - Hidden for Archived or Read-Only */}
+        {!account?.isArchived && account?.canEdit !== false && (
           <View style={styles.actionRow}>
             <TouchableOpacity 
               style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}

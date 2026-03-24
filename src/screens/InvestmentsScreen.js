@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, StatusBar, Dimensions, Modal, Alert
+  RefreshControl, StatusBar, Dimensions, Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useInvestments } from '../hooks/useInvestments';
+import { useAlert } from '../context/AlertContext';
 import { useTheme } from '../context/ThemeContext';
-import { useAppDrawer } from '../context/DrawerContext';
+
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -24,8 +25,9 @@ const TYPES = [
 
 export default function InvestmentsScreen({ navigation, route }) {
   const { colors, isDark } = useTheme();
-  const { investments, loading, fetchInvestments, addInvestment, removeInvestment } = useInvestments();
-  const { openDrawer } = useAppDrawer();
+  const { investments, loading, fetchInvestments, addInvestment, removeInvestment, editInvestment } = useInvestments();
+
+  const { alert: showAlert } = useAlert();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -71,7 +73,7 @@ export default function InvestmentsScreen({ navigation, route }) {
   }, [fetchInvestments]);
 
   const handleSave = async () => {
-    if (!name || !units || !buyPrice) return Alert.alert('Error', 'Please fill all required fields');
+    if (!name || !units || !buyPrice) return showAlert('Error', 'Please fill all required fields', [], 'warning');
     
     try {
       const payload = {
@@ -91,7 +93,7 @@ export default function InvestmentsScreen({ navigation, route }) {
       setModalVisible(false);
       resetForm();
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, [], 'error');
     }
   };
 
@@ -115,8 +117,8 @@ export default function InvestmentsScreen({ navigation, route }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
       
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.backBtn}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Investments</Text>
@@ -149,10 +151,10 @@ export default function InvestmentsScreen({ navigation, route }) {
               style={[styles.invCard, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.sm]}
               onPress={() => navigation.navigate('InvestmentDetail', { investment: inv })}
               onLongPress={() => {
-                Alert.alert('Delete Investment', 'Are you sure?', [
+                showAlert('Delete Investment', 'Are you sure?', [
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Delete', style: 'destructive', onPress: () => removeInvestment(inv._id) }
-                ]);
+                ], 'warning');
               }}
             >
               <View style={styles.cardTop}>

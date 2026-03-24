@@ -2,11 +2,9 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 // Production / Render Backend Link
-const BASE_URL = 'https://salary-calculation-ic6k.onrender.com';
-// const BASE_URL = 'http://10.59.115.32:5000/api'; // mobile ip
-// const BASE_URL = 'http://10.59.115.32:5000/api'; // pc ip
-// const BASE_URL = 'http://192.168.1.38:5000'; // Local IP (Physical device)
-// const BASE_URL = 'http://10.0.2.2:5000/api'; // Android emulator
+// const BASE_URL = 'https://salary-calculation-ic6k.onrender.com';
+// const BASE_URL = 'http://10.214.63.32:5000'; // mobile ip
+const BASE_URL = 'http://192.168.1.46:5000'; // pc ip
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -14,7 +12,14 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
 });
+
+let unauthorizedHandler = null;
+
+export const setUnauthorizedHandler = (handler) => {
+  unauthorizedHandler = handler;
+};
 
 // Request Interceptor — attach JWT token
 api.interceptors.request.use(
@@ -42,6 +47,9 @@ api.interceptors.response.use(
       // Backend responded, but with an error status code
       if (error.response.status === 401) {
         message = 'Your session has expired or is invalid. Please log in again.';
+        if (unauthorizedHandler) {
+          unauthorizedHandler();
+        }
       } else if (error.response.status === 403) {
         message = 'You do not have permission to perform this action.';
       } else if (error.response.status >= 500) {
@@ -72,7 +80,9 @@ api.interceptors.response.use(
       message = 'An unexpected error occurred. Please try again.';
     }
 
-    return Promise.reject(new Error(message));
+    const errorObj = new Error(message);
+    if (error.response) errorObj.status = error.response.status;
+    return Promise.reject(errorObj);
   }
 );
 

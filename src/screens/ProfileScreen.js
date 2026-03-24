@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Switch, Alert, Modal, TouchableWithoutFeedback, Platform, Dimensions, Image
+  Switch, Modal, TouchableWithoutFeedback, Platform, Dimensions, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
+import { useAlert } from '../context/AlertContext';
+
 import Button from '../components/Button';
 import Input from '../components/Input';
 import BADGES, { getAchievements } from '../utils/gamificationService';
@@ -16,7 +18,6 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import * as ImagePicker from 'expo-image-picker';
 import { storage } from '../utils/storage';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
-import { useAppDrawer } from '../context/DrawerContext';
 import PinPad from '../components/PinPad';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
@@ -25,7 +26,8 @@ export default function ProfileScreen({ navigation }) {
   const { user, logout, updateUser, setIsBiometricEnabled, appPin, setAppPin } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
   const { summary, fetchSummary } = useTransactions();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
 
   const [activeTab, setActiveTab] = useState('account'); // 'account', 'security', 'preferences', 'badges'
   const [editing, setEditing] = useState(false);
@@ -84,13 +86,13 @@ export default function ProfileScreen({ navigation }) {
             expectedIncomes: expectedIncomes,
             avatar: base64Image
           });
-          Alert.alert('✅ Success', 'Profile picture updated successfully');
+          showAlert('✅ Success', 'Profile picture updated successfully', [], 'success');
         } catch (err) {
-          Alert.alert('Error', err.message || 'Failed to update profile picture');
+          showAlert('Error', err.message || 'Failed to update profile picture', [], 'error');
         }
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
+      showAlert('Error', 'Failed to pick image', [], 'error');
       console.log(error);
     }
   };
@@ -133,10 +135,10 @@ export default function ProfileScreen({ navigation }) {
             if (newPin === tempPin) {
               await storage.setAppPin(user?._id, newPin);
               setAppPin(newPin);
-              Alert.alert('Success', 'App PIN has been set successfully.');
+              showAlert('Success', 'App PIN has been set successfully.', [], 'success');
               setPinModalVisible(false);
             } else {
-              Alert.alert('Error', 'PINs do not match. Try again.');
+              showAlert('Error', 'PINs do not match. Try again.', [], 'error');
               setPinInput('');
               setPinMode('set');
             }
@@ -144,10 +146,10 @@ export default function ProfileScreen({ navigation }) {
             if (newPin === appPin) {
               await storage.setAppPin(user?._id, null);
               setAppPin(null);
-              Alert.alert('Success', 'App PIN has been removed.');
+              showAlert('Success', 'App PIN has been removed.', [], 'success');
               setPinModalVisible(false);
             } else {
-              Alert.alert('Error', 'Incorrect PIN.');
+              showAlert('Error', 'Incorrect PIN.', [], 'error');
               setPinInput('');
             }
           }
@@ -188,59 +190,64 @@ export default function ProfileScreen({ navigation }) {
         avatar: avatar || user?.avatar // ensure we don't accidentally clear it
       });
       setEditing(false);
-      Alert.alert('✅ Success', 'Profile updated successfully');
+      showAlert('✅ Success', 'Profile updated successfully', [], 'success');
     } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to update profile');
+      showAlert('Error', err.message || 'Failed to update profile', [], 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: logout },
-    ]);
+    showAlert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: logout },
+      ],
+      'warning'
+    );
   };
 
   const { changePassword, forgotPassword, resetPassword } = useAuth();
 
   const handlePasswordChange = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      return Alert.alert('Error', 'Please fill all fields');
+      return showAlert('Error', 'Please fill all fields', [], 'warning');
     }
     if (newPassword !== confirmPassword) {
-      return Alert.alert('Error', 'Passwords do not match');
+      return showAlert('Error', 'Passwords do not match', [], 'error');
     }
     if (newPassword === oldPassword) {
-      return Alert.alert('Error', 'New password must be different from old password');
+      return showAlert('Error', 'New password must be different from old password', [], 'warning');
     }
     if (newPassword.length < 6) {
-      return Alert.alert('Error', 'Password must be at least 6 characters');
+      return showAlert('Error', 'Password must be at least 6 characters', [], 'warning');
     }
 
     setSecurityLoading(true);
     try {
       await changePassword(oldPassword, newPassword);
-      Alert.alert('✅ Success', 'Password updated successfully');
+      showAlert('✅ Success', 'Password updated successfully', [], 'success');
       resetSecurityState();
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || err.message || 'Failed to change password');
+      showAlert('Error', err.response?.data?.message || err.message || 'Failed to change password', [], 'error');
     } finally {
       setSecurityLoading(false);
     }
   };
 
   const handleRequestOTP = async () => {
-    if (!emailForReset) return Alert.alert('Error', 'Email is required');
+    if (!emailForReset) return showAlert('Error', 'Email is required', [], 'warning');
     
     setSecurityLoading(true);
     try {
       await forgotPassword(emailForReset);
-      Alert.alert('✅ Success', 'OTP sent to your email');
+      showAlert('✅ Success', 'OTP sent to your email', [], 'success');
       setSecurityMode('otp');
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || err.message || 'Failed to send OTP');
+      showAlert('Error', err.response?.data?.message || err.message || 'Failed to send OTP', [], 'error');
     } finally {
       setSecurityLoading(false);
     }
@@ -248,22 +255,22 @@ export default function ProfileScreen({ navigation }) {
 
   const handleVerifyOTPAndReset = async () => {
     if (!otp || !newPassword || !confirmPassword) {
-      return Alert.alert('Error', 'Please fill all fields');
+      return showAlert('Error', 'Please fill all fields', [], 'warning');
     }
     if (newPassword !== confirmPassword) {
-      return Alert.alert('Error', 'Passwords do not match');
+      return showAlert('Error', 'Passwords do not match', [], 'error');
     }
     if (otp.length !== 4) {
-      return Alert.alert('Error', 'Please enter 4-digit OTP');
+      return showAlert('Error', 'Please enter 4-digit OTP', [], 'warning');
     }
 
     setSecurityLoading(true);
     try {
       await resetPassword(emailForReset, otp, newPassword);
-      Alert.alert('✅ Success', 'Password reset successful');
+      showAlert('✅ Success', 'Password reset successful', [], 'success');
       resetSecurityState();
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || err.message || 'Invalid or expired OTP');
+      showAlert('Error', err.response?.data?.message || err.message || 'Invalid or expired OTP', [], 'error');
     } finally {
       setSecurityLoading(false);
     }
@@ -288,8 +295,8 @@ export default function ProfileScreen({ navigation }) {
           style={styles.headerGrad}
         >
           <View style={styles.topNav}>
-            <TouchableOpacity onPress={openDrawer} style={styles.menuIconWrap}>
-              <Ionicons name="menu-outline" size={28} color="#fff" />
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
+              <Ionicons name="arrow-back-outline" size={28} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Profile</Text>
           </View>
@@ -458,25 +465,30 @@ export default function ProfileScreen({ navigation }) {
                               <Ionicons name="pencil" size={18} color={COLORS.primary} />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => {
-                              Alert.alert('Delete', 'Are you sure you want to delete this expected income?', [
-                                { text: 'Cancel', style: 'cancel' },
-                                { 
-                                  text: 'Delete', 
-                                  style: 'destructive', 
-                                  onPress: async () => {
-                                    const newIncomes = expectedIncomes.filter((_, i) => i !== index);
-                                    setExpectedIncomes(newIncomes);
-                                    setLoading(true);
-                                    try {
-                                      await updateUser({ expectedIncomes: newIncomes });
-                                    } catch (err) {
-                                      Alert.alert('Error', 'Failed to delete income');
-                                    } finally {
-                                      setLoading(false);
-                                    }
-                                  } 
-                                },
-                              ]);
+                              showAlert(
+                                'Delete', 
+                                'Are you sure you want to delete this expected income?', 
+                                [
+                                  { text: 'Cancel', style: 'cancel' },
+                                  { 
+                                    text: 'Delete', 
+                                    style: 'destructive', 
+                                    onPress: async () => {
+                                      const newIncomes = expectedIncomes.filter((_, i) => i !== index);
+                                      setExpectedIncomes(newIncomes);
+                                      setLoading(true);
+                                      try {
+                                        await updateUser({ expectedIncomes: newIncomes });
+                                      } catch (err) {
+                                        showAlert('Error', 'Failed to delete income', [], 'error');
+                                      } finally {
+                                        setLoading(false);
+                                      }
+                                    } 
+                                  },
+                                ],
+                                'warning'
+                              );
                             }} style={{ padding: 4 }}>
                               <Ionicons name="trash" size={18} color={COLORS.expense} />
                             </TouchableOpacity>

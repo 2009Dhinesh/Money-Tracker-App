@@ -1,14 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal,
-  StatusBar, Alert, TextInput, RefreshControl, Dimensions,
+  StatusBar, TextInput, RefreshControl, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useMetals } from '../hooks/useMetals';
-import { useAppDrawer } from '../context/DrawerContext';
+import { useAlert } from '../context/AlertContext';
+
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
@@ -55,7 +56,8 @@ const formatUpdateTime = (isoStr) => {
 export default function MetalsScreen({ navigation }) {
   const { colors, isDark } = useTheme();
   const { assets, summary, prices, dailyChange, history, loading, fetchAssets, fetchHistory, addAsset, updateAsset, removeAsset, calculate } = useMetals();
-  const { openDrawer } = useAppDrawer();
+
+  const { alert: showAlert } = useAlert();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -112,8 +114,8 @@ export default function MetalsScreen({ navigation }) {
   };
 
   const handleSave = async () => {
-    if (!mWeight || parseFloat(mWeight) <= 0) return Alert.alert('Error', 'Enter valid weight');
-    if (!mPrice || parseFloat(mPrice) <= 0) return Alert.alert('Error', 'Enter purchase price');
+    if (!mWeight || parseFloat(mWeight) <= 0) return showAlert('Error', 'Enter valid weight', [], 'warning');
+    if (!mPrice || parseFloat(mPrice) <= 0) return showAlert('Error', 'Enter purchase price', [], 'warning');
     try {
       const data = {
         metalType: mMetal, name: mName.trim() || (mMetal === 'gold' ? 'Gold' : 'Silver'),
@@ -122,25 +124,25 @@ export default function MetalsScreen({ navigation }) {
       };
       if (editingId) {
         await updateAsset(editingId, data);
-        Alert.alert('✅', 'Asset updated!');
+        showAlert('✅', 'Asset updated!', [], 'success');
       } else {
         await addAsset(data);
-        Alert.alert('✅', `${mMetal === 'gold' ? 'Gold' : 'Silver'} asset added!`);
+        showAlert('✅', `${mMetal === 'gold' ? 'Gold' : 'Silver'} asset added!`, [], 'success');
       }
       setShowAddModal(false); resetForm();
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const handleCalc = async () => {
     if (!calcAmount || parseFloat(calcAmount) <= 0) return;
-    try { setCalcResult(await calculate(calcAmount)); } catch (err) { Alert.alert('Error', err.message); }
+    try { setCalcResult(await calculate(calcAmount)); } catch (err) { showAlert('Error', err.message, [], 'error'); }
   };
 
   const handleDelete = (id, name) => {
-    Alert.alert('Delete', `Remove "${name}"?`, [
+    showAlert('Delete', `Remove "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => removeAsset(id) },
-    ]);
+    ], 'warning');
   };
 
   const goldPrice = prices?.gold?.price22k || prices?.gold?.price24k || 0;
@@ -170,8 +172,8 @@ export default function MetalsScreen({ navigation }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} translucent={false} />
 
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={openDrawer} style={styles.backBtn}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back-outline" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>⚜️ Precious Metals</Text>
         <View style={{ flexDirection: 'row', gap: SPACING.base }}>

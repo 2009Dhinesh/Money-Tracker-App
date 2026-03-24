@@ -89,13 +89,69 @@ export const sendInstantNotification = async (title, body) => {
   });
 };
 
-export const cancelAllNotifications = async () => {
+export const scheduleDailyReminders = async () => {
   if (isExpoGo) return;
-  await Notifications.cancelAllScheduledNotificationsAsync();
+
+  // First cancel existing daily reminders to avoid duplicates
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const notif of scheduled) {
+    if (notif.content.data?.type === 'daily-reminder') {
+      await Notifications.cancelScheduledNotificationAsync(notif.identifier);
+    }
+  }
+
+  const reminders = [
+    {
+      id: 'morning-reminder',
+      title: 'Good Morning! ☀️',
+      body: 'Inaiku ethavathu income or expense iruntha note panna marakathenga.',
+      hour: 9,
+      minute: 0,
+    },
+    {
+      id: 'afternoon-reminder',
+      title: 'Good Afternoon! ☕',
+      body: 'Afternoon varai ethavathu income or expense aacha? Note pannidunga.',
+      hour: 14,
+      minute: 0,
+    },
+    {
+      id: 'evening-reminder',
+      title: 'Good Evening! 🌙',
+      body: 'Inaiku muzhu-vathum ethavathu income, expense illa transfer aachanu check panni note pannunga.',
+      hour: 20,
+      minute: 0,
+    },
+  ];
+
+  for (const reminder of reminders) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: reminder.title,
+        body: reminder.body,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+        data: { type: 'daily-reminder', reminderId: reminder.id },
+      },
+      trigger: {
+        hour: reminder.hour,
+        minute: reminder.minute,
+        repeats: true,
+      },
+    });
+  }
+  
+  console.log('Daily reminders scheduled successfully');
 };
 
 export const syncDebtsWithNotifications = async (debts) => {
-  await cancelAllNotifications();
+  // We don't want to cancel daily reminders here, only debt reminders
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const notif of scheduled) {
+    if (notif.content.data?.type === 'reminder') {
+      await Notifications.cancelScheduledNotificationAsync(notif.identifier);
+    }
+  }
   
   for (const debt of debts) {
     if (debt.dueDate && debt.status !== 'completed') {

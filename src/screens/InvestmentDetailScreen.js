@@ -1,11 +1,12 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useInvestments } from '../hooks/useInvestments';
+import { useAlert } from '../context/AlertContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../constants/theme';
 
 const TYPES = [
@@ -19,6 +20,7 @@ export default function InvestmentDetailScreen({ navigation, route }) {
   const { investment } = route.params || {};
   const { colors, isDark } = useTheme();
   const { removeInvestment } = useInvestments();
+  const { alert: showAlert } = useAlert();
 
   if (!investment) return null;
 
@@ -26,7 +28,7 @@ export default function InvestmentDetailScreen({ navigation, route }) {
   const isProfit = investment.profit >= 0;
 
   const handleDelete = () => {
-    Alert.alert('Delete Investment', 'Are you sure you want to delete this investment?', [
+    showAlert('Delete Investment', 'Are you sure you want to delete this investment?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -36,7 +38,7 @@ export default function InvestmentDetailScreen({ navigation, route }) {
           navigation.goBack();
         },
       },
-    ]);
+    ], 'warning');
   };
 
   const DetailRow = ({ icon, label, value, subValue, color }) => (
@@ -59,7 +61,7 @@ export default function InvestmentDetailScreen({ navigation, route }) {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.menuIconWrap}>
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
+          <Ionicons name="arrow-back-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Investment Details</Text>
         <TouchableOpacity style={styles.headerRight} onPress={() => navigation.navigate('Investments', { editInvestment: investment })}>
